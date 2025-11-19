@@ -1,1 +1,30 @@
+name: Deploy UnifyOS
 
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd apps/frontend && npm install
+          cd apps/api && npm install
+      - name: Run tests
+        run: |
+          cd apps/frontend && npm run build
+          cd apps/api && npm run build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Render
+        run: echo "Automatic deployment configured via Render webhooks"
