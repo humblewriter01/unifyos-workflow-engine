@@ -1,0 +1,9 @@
+{
+  "name": "unifyos-api",
+  "version": "1.0.0",
+  "description": "UnifyOS API Server",
+  "scripts": {
+    "dev": "node src/server.js",
+    "build": "echo 'API build complete'"
+  }
+}
