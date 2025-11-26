@@ -7,35 +7,207 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ============================================
+// USER MANAGEMENT
+// ============================================
 
-  workflows Workflow[]
-  appConnections AppConnection[]
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?   // For email/password auth
+  emailVerified Boolean   @default(false)
+  plan          UserPlan  @default(FREE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  workflows     Workflow[]
+  notifications Notification[]
+  appTokens     AppToken[]
+  
+  @@index([email])
 }
+
+enum UserPlan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String  // oauth, email
+  provider          String  // google, slack, github
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============================================
+// APP INTEGRATIONS (REAL OAUTH TOKENS)
+// ============================================
+
+model AppToken {
+  id           String   @id @default(cuid())
+  userId       String
+  appName      String   // slack, gmail, calendar, notion, etc
+  accessToken  String   @db.Text // Encrypted OAuth token
+  refreshToken String?  @db.Text
+  expiresAt    DateTime?
+  scope        String?
+  metadata     Json?    // App-specific data (team_id, workspace_id, etc)
+  connected    Boolean  @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, appName])
+  @@index([userId])
+  @@index([appName])
+}
+
+// ============================================
+// WORKFLOWS (REAL AUTOMATION)
+// ============================================
 
 model Workflow {
-  id        String   @id @default(cuid())
-  name      String
-  trigger   Json
-  actions   Json
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
   
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  // Trigger configuration
+  triggerApp    String   // slack, gmail, calendar, etc
+  triggerEvent  String   // new_message, new_email, event_start
+  triggerConfig Json     // Event-specific config
+  
+  // Actions configuration
+  actions       Json     // Array of actions to execute
+  
+  enabled       Boolean  @default(true)
+  executionCount Int     @default(0)
+  lastExecutedAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions WorkflowExecution[]
+
+  @@index([userId])
+  @@index([enabled])
 }
 
-model AppConnection {
-  id        String   @id @default(cuid())
-  appName   String
-  connected Boolean  @default(false)
-  config    Json?
-  userId    String
+model WorkflowExecution {
+  id          String   @id @default(cuid())
+  workflowId  String
+  status      ExecutionStatus
+  triggerData Json     // Data that triggered the workflow
+  results     Json?    // Results of each action
+  error       String?  @db.Text
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  duration    Int?     // milliseconds
   
-  user User @relation(fields: [userId], references: [id])
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// NOTIFICATIONS (REAL UNIFIED INBOX)
+// ============================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  appName   String   // Source app
+  appIcon   String?  // Icon identifier
+  title     String
+  message   String   @db.Text
+  priority  NotificationPriority @default(MEDIUM)
+  read      Boolean  @default(false)
+  metadata  Json?    // App-specific data
+  externalId String? // ID in source system
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// ============================================
+// ANALYTICS & METRICS
+// ============================================
+
+model UsageMetric {
+  id             String   @id @default(cuid())
+  userId         String
+  metricType     String   // workflows_executed, time_saved, apps_connected
+  value          Float
+  date           DateTime @default(now())
+  
+  @@index([userId, metricType, date])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // workflow_created, app_connected, etc
+  resource  String?  // Resource identifier
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action])
 }
