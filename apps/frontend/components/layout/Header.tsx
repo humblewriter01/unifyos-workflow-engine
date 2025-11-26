@@ -1,79 +1,70 @@
+import { Menu, Bell, Search, Settings, User, ChevronDown } from 'lucide-react';
+
 interface HeaderProps {
   onMobileMenuClick?: () => void;
 }
 
 export default function Header({ onMobileMenuClick }: HeaderProps) {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="flex justify-between items-center px-4 sm:px-6 py-4">
+    <header className="bg-white border-b border-neutral-200">
+      <div className="flex justify-between items-center px-4 sm:px-6 h-16">
         <div className="flex items-center space-x-4">
           {/* Mobile Menu Button */}
           <button
             onClick={onMobileMenuClick}
-            className="lg:hidden text-gray-600 hover:text-gray-900 focus:outline-none"
+            className="lg:hidden p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <Menu className="w-5 h-5" />
           </button>
 
-          {/* Logo - Hidden on mobile when sidebar is present */}
-          <div className="flex items-center space-x-2 lg:space-x-4">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              UnifyOS
-            </h1>
-            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-              Beta
-            </span>
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:flex items-center relative">
+            <Search className="absolute left-3 w-4 h-4 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-80 pl-10 pr-4 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+            />
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="flex items-center space-x-2">
           {/* App Connection Status */}
-          <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span className="hidden md:inline">3 apps connected</span>
-            <span className="md:hidden">3 apps</span>
+          <div className="hidden sm:flex items-center px-3 py-1.5 bg-neutral-50 rounded-lg border border-neutral-200">
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                <div className="absolute inset-0 w-2 h-2 bg-emerald-500 rounded-full animate-ping opacity-75"></div>
+              </div>
+              <span className="text-sm font-medium text-neutral-700">
+                3 apps
+              </span>
+            </div>
           </div>
 
-          {/* Notifications Bell - Mobile Optimized */}
-          <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-            <svg
-              className="w-5 h-5 sm:w-6 sm:h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            {/* Notification Badge */}
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          {/* Notifications */}
+          <button className="relative p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors">
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-600 rounded-full"></span>
+          </button>
+
+          {/* Settings */}
+          <button className="hidden md:block p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors">
+            <Settings className="w-5 h-5" />
           </button>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
-              U
-            </div>
-            {/* User Name - Hidden on small screens */}
-            <span className="hidden md:inline text-sm font-medium text-gray-700">
-              User
-            </span>
+          <div className="flex items-center pl-2 border-l border-neutral-200">
+            <button className="flex items-center space-x-2 px-2 py-1.5 hover:bg-neutral-50 rounded-lg transition-colors group">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <div className="hidden lg:block text-left">
+                <div className="text-sm font-medium text-neutral-900">Admin</div>
+                <div className="text-xs text-neutral-500">admin@company.com</div>
+              </div>
+              <ChevronDown className="hidden lg:block w-4 h-4 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
+            </button>
           </div>
         </div>
       </div>
