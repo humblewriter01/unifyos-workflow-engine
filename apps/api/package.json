@@ -4,6 +4,14 @@
   "description": "UnifyOS API Server",
   "scripts": {
     "dev": "node src/server.js",
-    "build": "echo 'API build complete'"
+    "build": "echo 'API build complete'",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "prisma": "^5.0.0",
+    "express": "^4.18.0"
   }
 }
