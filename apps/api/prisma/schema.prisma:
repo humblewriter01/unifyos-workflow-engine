@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflows Workflow[]
+  appConnections AppConnection[]
+}
+
+model Workflow {
+  id        String   @id @default(cuid())
+  name      String
+  trigger   Json
+  actions   Json
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+}
+
+model AppConnection {
+  id        String   @id @default(cuid())
+  appName   String
+  connected Boolean  @default(false)
+  config    Json?
+  userId    String
+  
+  user User @relation(fields: [userId], references: [id])
+}
