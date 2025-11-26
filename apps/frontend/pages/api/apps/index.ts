@@ -1,107 +1,136 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { PrismaClient } from '@prisma/client';
 
-interface App {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  connected: boolean;
-  category: string;
-  connectedAt?: string;
-}
+const prisma = new PrismaClient();
 
-// In-memory storage (replace with database in production)
-let apps: App[] = [
-  {
-    id: 'gmail',
-    name: 'Gmail',
-    icon: '📧',
-    description: 'Send and receive emails',
-    connected: true,
-    category: 'Communication',
-    connectedAt: '2024-01-15',
-  },
+// Available apps catalog
+const AVAILABLE_APPS = [
   {
     id: 'slack',
     name: 'Slack',
-    icon: '💬',
     description: 'Team messaging and collaboration',
-    connected: true,
     category: 'Communication',
-    connectedAt: '2024-01-20',
+  },
+  {
+    id: 'gmail',
+    name: 'Gmail',
+    description: 'Send and receive emails',
+    category: 'Communication',
   },
   {
     id: 'calendar',
     name: 'Google Calendar',
-    icon: '📅',
     description: 'Manage events and schedules',
-    connected: true,
     category: 'Productivity',
-    connectedAt: '2024-01-18',
   },
   {
     id: 'notion',
     name: 'Notion',
-    icon: '📝',
     description: 'Notes and documentation',
-    connected: false,
     category: 'Productivity',
   },
   {
     id: 'trello',
     name: 'Trello',
-    icon: '📋',
     description: 'Project management boards',
-    connected: false,
     category: 'Project Management',
   },
   {
     id: 'asana',
     name: 'Asana',
-    icon: '✅',
     description: 'Task and project tracking',
-    connected: false,
     category: 'Project Management',
   },
   {
     id: 'hubspot',
     name: 'HubSpot',
-    icon: '🎯',
     description: 'CRM and sales tools',
-    connected: false,
     category: 'Sales & CRM',
   },
   {
     id: 'salesforce',
     name: 'Salesforce',
-    icon: '☁️',
     description: 'Customer relationship management',
-    connected: false,
     category: 'Sales & CRM',
   },
 ];
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const { method } = req;
 
-  switch (method) {
-    case 'GET':
-      // Get all apps
-      const connectedCount = apps.filter(app => app.connected).length;
-      return res.status(200).json({
-        success: true,
-        data: apps,
-        meta: {
-          total: apps.length,
-          connected: connectedCount,
-        },
-      });
+  // TODO: Get real user ID from session
+  const userId = process.env.NODE_ENV === 'development' ? 'dev-user' : req.headers['x-user-id'] as string;
 
-    default:
-      res.setHeader('Allow', ['GET']);
-      return res.status(405).json({
-        success: false,
-        error: `Method ${method} Not Allowed`,
-      });
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized - No user session',
+    });
+  }
+
+  if (method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
+    return res.status(405).json({
+      success: false,
+      error: `Method ${method} Not Allowed`,
+    });
+  }
+
+  try {
+    // Get user's connected apps from database
+    const connectedTokens = await prisma.appToken.findMany({
+      where: { userId },
+      select: {
+        appName: true,
+        connected: true,
+        createdAt: true,
+      },
+    });
+
+    // Create a map of connected apps
+    const connectedMap = new Map(
+      connectedTokens.map(token => [
+        token.appName.toLowerCase(),
+        {
+          connected: token.connected,
+          connectedAt: token.createdAt.toISOString().split('T')[0],
+        }
+      ])
+    );
+
+    // Merge with available apps catalog
+    const apps = AVAILABLE_APPS.map(app => {
+      const connectionInfo = connectedMap.get(app.id);
+      return {
+        id: app.id,
+        name: app.name,
+        icon: app.id, // Frontend maps this to Lucide icons
+        description: app.description,
+        category: app.category,
+        connected: connectionInfo?.connected || false,
+        connectedAt: connectionInfo?.connectedAt,
+      };
+    });
+
+    const connectedCount = apps.filter(app => app.connected).length;
+
+    return res.status(200).json({
+      success: true,
+      data: apps,
+      meta: {
+        total: apps.length,
+        connected: connectedCount,
+      },
+    });
+  } catch (error: any) {
+    console.error('Failed to fetch apps:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch apps',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
   }
 }
