@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Filter, Mail, MessageSquare, FileText, Calendar, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Search, Filter, Mail, MessageSquare, FileText, Calendar, CheckCircle2, Circle, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface Notification {
-  id: number;
+  id: string;
   app: string;
   message: string;
   time: string;
@@ -14,59 +14,6 @@ interface Notification {
   timestamp: number;
 }
 
-const mockNotifications: Notification[] = [
-  { 
-    id: 1, 
-    app: 'Slack', 
-    message: 'New message in #general: "Team standup in 10 minutes"', 
-    time: '2 min ago', 
-    unread: true,
-    priority: 'high',
-    icon: 'message',
-    timestamp: Date.now() - 120000,
-  },
-  { 
-    id: 2, 
-    app: 'Gmail', 
-    message: 'Meeting confirmed: Project Kickoff with Design Team', 
-    time: '15 min ago', 
-    unread: true,
-    priority: 'medium',
-    icon: 'mail',
-    timestamp: Date.now() - 900000,
-  },
-  { 
-    id: 3, 
-    app: 'Notion', 
-    message: 'Document shared: Q4 Planning Strategy by Sarah Chen', 
-    time: '1 hour ago', 
-    unread: false,
-    priority: 'low',
-    icon: 'file',
-    timestamp: Date.now() - 3600000,
-  },
-  { 
-    id: 4, 
-    app: 'Calendar', 
-    message: 'Reminder: Team sync starting in 2 hours', 
-    time: '2 hours ago', 
-    unread: false,
-    priority: 'medium',
-    icon: 'calendar',
-    timestamp: Date.now() - 7200000,
-  },
-  { 
-    id: 5, 
-    app: 'Trello', 
-    message: 'Card moved to "In Progress": Update landing page copy', 
-    time: '3 hours ago', 
-    unread: true,
-    priority: 'low',
-    icon: 'file',
-    timestamp: Date.now() - 10800000,
-  },
-];
-
 const iconMap = {
   mail: Mail,
   message: MessageSquare,
@@ -75,11 +22,39 @@ const iconMap = {
 };
 
 export default function UnifiedInbox() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterApp, setFilterApp] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
-  const [visibleCount, setVisibleCount] = useState<number>(5);
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+
+  // Fetch REAL notifications from API
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/notifications');
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load notifications');
+      }
+
+      setNotifications(result.data || []);
+    } catch (err: any) {
+      console.error('Failed to load notifications:', err);
+      setError(err.message || 'Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const apps = ['All', ...Array.from(new Set(notifications.map((n) => n.app)))];
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -94,24 +69,40 @@ export default function UnifiedInbox() {
 
   const visibleNotifications = filteredNotifications.slice(0, visibleCount);
 
-  const handleMarkAsRead = (id: number) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, unread: false } : n))
-    );
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await fetch(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+      });
+      
+      setNotifications(
+        notifications.map((n) => (n.id === id ? { ...n, unread: false } : n))
+      );
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
   };
 
-  const handleMarkAsUnread = (id: number) => {
+  const handleMarkAsUnread = async (id: string) => {
     setNotifications(
       notifications.map((n) => (n.id === id ? { ...n, unread: true } : n))
     );
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+  const handleMarkAllAsRead = async () => {
+    try {
+      await fetch('/api/notifications/read-all', {
+        method: 'PATCH',
+      });
+      
+      setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
   };
 
   const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 5);
+    setVisibleCount((prev) => prev + 10);
   };
 
   const getPriorityStyles = (priority: string) => {
@@ -125,6 +116,43 @@ export default function UnifiedInbox() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white border border-neutral-200 rounded-lg p-4 animate-pulse">
+            <div className="flex items-start space-x-4">
+              <div className="w-10 h-10 bg-neutral-200 rounded-lg"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-neutral-200 rounded w-3/4"></div>
+                <div className="h-3 bg-neutral-200 rounded w-1/2"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="flex items-start space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-800">{error}</p>
+            <button
+              onClick={loadNotifications}
+              className="mt-2 text-sm text-red-600 hover:text-red-700 underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -137,12 +165,21 @@ export default function UnifiedInbox() {
             </span>
           )}
         </div>
-        <button
-          onClick={handleMarkAllAsRead}
-          className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
-        >
-          Mark all as read
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={loadNotifications}
+            className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleMarkAllAsRead}
+            className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+          >
+            Mark all as read
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -257,7 +294,8 @@ export default function UnifiedInbox() {
             <div className="w-16 h-16 mx-auto bg-neutral-100 rounded-full flex items-center justify-center mb-4">
               <Mail className="w-8 h-8 text-neutral-400" />
             </div>
-            <p className="text-neutral-600 font-medium">No notifications found</p>
+            <p className="text-neutral-600 font-medium">No notifications yet</p>
+            <p className="text-sm text-neutral-500 mt-1">Connect apps to start receiving notifications</p>
             {(searchQuery || filterApp !== 'All' || showUnreadOnly) && (
               <button
                 onClick={() => {
