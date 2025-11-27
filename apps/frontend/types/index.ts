@@ -13,3 +13,11 @@ export interface AppConnection {
   connected: boolean;
   lastSynced: string | null;
 }
+
+export interface Workflow {
+  id: string;
+  name: string;
+  trigger: { app: string; event: string };
+  actions: Array<{ app: string; action: string }>;
+  enabled: boolean;
+}
