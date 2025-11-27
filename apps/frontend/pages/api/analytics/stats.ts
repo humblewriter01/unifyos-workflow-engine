@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../../lib/prisma';
 
 export default async function handler(
   req: NextApiRequest,
@@ -67,8 +65,8 @@ export default async function handler(
       }),
     ]);
 
-    const activeWorkflows = workflows.filter(w => w.enabled).length;
-    const totalExecutions = workflows.reduce((sum, w) => sum + w.executionCount, 0);
+    const activeWorkflows = workflows.filter((w: any) => w.enabled).length;
+    const totalExecutions = workflows.reduce((sum: number, w: any) => sum + w.executionCount, 0);
 
     // Calculate time saved (rough estimate: 2 minutes per execution)
     const timeSavedMinutes = totalExecutions * 2;
