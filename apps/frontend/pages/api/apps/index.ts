@@ -89,8 +89,8 @@ export default async function handler(
     });
 
     // Create a map of connected apps
-    const connectedMap = new Map(
-      connectedTokens.map(token => [
+    const connectedMap = new Map<string, { connected: boolean; connectedAt: string }>(
+      connectedTokens.map((token: { appName: string; connected: boolean; createdAt: Date }) => [
         token.appName.toLowerCase(),
         {
           connected: token.connected,
