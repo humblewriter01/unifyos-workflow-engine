@@ -37,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   if (!mounted) {
-    return <>{children}</>;
+    return <div className={theme === 'dark' ? 'dark' : ''}>{children}</div>;
   }
 
   return (
@@ -48,6 +48,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useTheme = () => {
+  // Safe for server-side rendering during build
+  if (typeof window === 'undefined') {
+    return { 
+      theme: 'light' as Theme, 
+      toggleTheme: () => {} 
+    };
+  }
+  
   const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');
