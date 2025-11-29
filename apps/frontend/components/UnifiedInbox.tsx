@@ -168,3 +168,4 @@ export default function UnifiedInbox() {
 }
 
 // Location: apps/frontend/components/UnifiedInbox.tsx
+// NO MOCK DATA - All data from API
