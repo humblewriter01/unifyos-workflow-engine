@@ -1,102 +1,95 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import prisma from '../../../lib/prisma';
 
-interface Notification {
-  id: number;
-  app: string;
-  message: string;
-  time: string;
-  unread: boolean;
-  priority: 'high' | 'medium' | 'low';
-  icon: string;
-  timestamp: number;
-}
-
-// In-memory storage (replace with database in production)
-let notifications: Notification[] = [
-  {
-    id: 1,
-    app: 'Slack',
-    message: 'New message in #general: "Team standup in 10 minutes"',
-    time: '2 min ago',
-    unread: true,
-    priority: 'high',
-    icon: '💬',
-    timestamp: Date.now() - 120000,
-  },
-  {
-    id: 2,
-    app: 'Gmail',
-    message: 'Meeting confirmed: Project Kickoff with Design Team',
-    time: '15 min ago',
-    unread: true,
-    priority: 'medium',
-    icon: '📧',
-    timestamp: Date.now() - 900000,
-  },
-  {
-    id: 3,
-    app: 'Notion',
-    message: 'Document shared: Q4 Planning Strategy by Sarah Chen',
-    time: '1 hour ago',
-    unread: false,
-    priority: 'low',
-    icon: '📝',
-    timestamp: Date.now() - 3600000,
-  },
-  {
-    id: 4,
-    app: 'Calendar',
-    message: 'Reminder: Team sync starting in 2 hours',
-    time: '2 hours ago',
-    unread: false,
-    priority: 'medium',
-    icon: '📅',
-    timestamp: Date.now() - 7200000,
-  },
-  {
-    id: 5,
-    app: 'Trello',
-    message: 'Card moved to "In Progress": Update landing page copy',
-    time: '3 hours ago',
-    unread: true,
-    priority: 'low',
-    icon: '📋',
-    timestamp: Date.now() - 10800000,
-  },
-];
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req;
+
+  // TODO: Get real user ID from session
+  const userId = process.env.NODE_ENV === 'development' ? 'dev-user' : req.headers['x-user-id'] as string;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized - No user session',
+    });
+  }
 
   switch (method) {
     case 'GET':
-      // Get all notifications
-      return res.status(200).json({
-        success: true,
-        data: notifications,
-        meta: {
-          total: notifications.length,
-          unread: notifications.filter(n => n.unread).length,
-        },
-      });
+      try {
+        // Get real notifications from database
+        const notifications = await prisma.notification.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 50, // Limit to most recent 50
+        });
+
+        // Transform to frontend format
+        const transformedNotifications = notifications.map(n => ({
+          id: n.id,
+          app: n.appName,
+          message: n.message,
+          time: formatTimeAgo(n.createdAt),
+          unread: !n.read,
+          priority: n.priority.toLowerCase() as 'high' | 'medium' | 'low',
+          icon: n.appIcon || '📬',
+          timestamp: n.createdAt.getTime(),
+        }));
+
+        return res.status(200).json({
+          success: true,
+          data: transformedNotifications,
+          meta: {
+            total: transformedNotifications.length,
+            unread: transformedNotifications.filter(n => n.unread).length,
+          },
+        });
+      } catch (error: any) {
+        console.error('Failed to fetch notifications:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch notifications',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
 
     case 'POST':
-      // Create new notification (for testing)
-      const newNotification: Notification = {
-        id: Date.now(),
-        app: req.body.app || 'System',
-        message: req.body.message || 'New notification',
-        time: 'just now',
-        unread: true,
-        priority: req.body.priority || 'medium',
-        icon: req.body.icon || '📬',
-        timestamp: Date.now(),
-      };
-      notifications.unshift(newNotification);
-      return res.status(201).json({
-        success: true,
-        data: newNotification,
-      });
+      try {
+        // Create new notification (for testing or webhook handlers)
+        const { app, message, priority, icon } = req.body;
+
+        const notification = await prisma.notification.create({
+          data: {
+            userId,
+            appName: app || 'System',
+            message: message || 'New notification',
+            priority: priority?.toUpperCase() || 'MEDIUM',
+            appIcon: icon || '📬',
+            read: false,
+          },
+        });
+
+        return res.status(201).json({
+          success: true,
+          data: {
+            id: notification.id,
+            app: notification.appName,
+            message: notification.message,
+            time: 'just now',
+            unread: !notification.read,
+            priority: notification.priority.toLowerCase(),
+            icon: notification.appIcon || '📬',
+            timestamp: notification.createdAt.getTime(),
+          },
+        });
+      } catch (error: any) {
+        console.error('Failed to create notification:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to create notification',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
 
     default:
       res.setHeader('Allow', ['GET', 'POST']);
@@ -106,3 +99,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       });
   }
 }
+
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour${Math.floor(seconds / 3600) > 1 ? 's' : ''} ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} day${Math.floor(seconds / 86400) > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString();
+}
+
+// Location: apps/frontend/pages/api/notifications/index.ts
+// REAL DATABASE QUERIES - NO MOCK DATA
