@@ -40,24 +40,24 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
       <div
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-64 bg-white border-r border-neutral-200
+          w-64 bg-white dark:bg-dark-900 border-r border-neutral-200 dark:border-dark-700
           transform transition-transform duration-300 ease-in-out
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-neutral-200">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-neutral-200 dark:border-dark-700">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-accent-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">U</span>
               </div>
-              <span className="text-lg font-semibold text-neutral-900">UnifyOS</span>
+              <span className="text-lg font-semibold text-neutral-900 dark:text-white">UnifyOS</span>
             </div>
             {/* Mobile Close Button */}
             <button
               onClick={onMobileClose}
-              className="lg:hidden text-neutral-500 hover:text-neutral-700 transition-colors"
+              className="lg:hidden text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -80,12 +80,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                     text-sm font-medium transition-all duration-150
                     ${
                       isActive
-                        ? 'bg-primary-50 text-primary-700 shadow-sm'
-                        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                        ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 shadow-sm'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-dark-800 hover:text-neutral-900 dark:hover:text-neutral-200'
                     }
                   `}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-primary-600' : 'text-neutral-400'}`} />
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500'}`} />
                   <span>{item.name}</span>
                 </button>
               );
@@ -93,13 +93,13 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-neutral-200">
-            <div className="px-3 py-2 bg-neutral-50 rounded-lg">
-              <div className="text-xs font-medium text-neutral-900 mb-1">
+          <div className="p-4 border-t border-neutral-200 dark:border-dark-700">
+            <div className="px-3 py-2 bg-neutral-50 dark:bg-dark-800 rounded-lg">
+              <div className="text-xs font-medium text-neutral-900 dark:text-white mb-1">
                 Need help?
               </div>
-              <div className="text-xs text-neutral-600">
-                Check our <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">documentation</a>
+              <div className="text-xs text-neutral-600 dark:text-neutral-400">
+                Check our <a href="#" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">documentation</a>
               </div>
             </div>
           </div>
@@ -108,3 +108,5 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
     </>
   );
 }
+
+// Location: apps/frontend/components/layout/Sidebar.tsx
