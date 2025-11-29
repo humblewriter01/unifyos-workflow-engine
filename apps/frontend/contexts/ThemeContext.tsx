@@ -36,7 +36,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Prevent flash of wrong theme
   if (!mounted) {
     return <>{children}</>;
   }
@@ -51,12 +50,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    if (typeof window === 'undefined') {
-      return { theme: 'light' as Theme, toggleTheme: () => {} };
-    }
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
 };
-
-// Location: apps/frontend/contexts/ThemeContext.tsx
