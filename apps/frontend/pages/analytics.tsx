@@ -106,25 +106,21 @@ export default function AnalyticsPage() {
                 icon={Link2}
                 label="Connected Apps"
                 value={stats?.connectedApps || 0}
-                change="+2 this week"
               />
               <MetricCard
                 icon={Zap}
                 label="Active Workflows"
                 value={stats?.activeWorkflows || 0}
-                change="+1 this week"
               />
               <MetricCard
                 icon={Clock}
                 label="Time Saved (Hours)"
                 value={stats?.timeSaved || 0}
-                change="+5.2h this week"
               />
               <MetricCard
                 icon={Activity}
                 label="Total Executions"
                 value={stats?.workflowExecutions || 0}
-                change="+24 today"
               />
             </div>
 
@@ -144,14 +140,18 @@ export default function AnalyticsPage() {
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">Success Rate</p>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Past 7 days</p>
                     </div>
-                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">98%</div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      {stats?.workflowExecutions ? '98%' : '-'}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-dark-700 rounded-lg">
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">Avg. Execution Time</p>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Past 7 days</p>
                     </div>
-                    <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">1.2s</div>
+                    <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                      {stats?.workflowExecutions ? '1.2s' : '-'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -164,36 +164,52 @@ export default function AnalyticsPage() {
                   </h3>
                   <Clock className="w-5 h-5 text-neutral-400 dark:text-neutral-500" />
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Email Automation</span>
+                {stats?.timeSaved && stats.timeSaved > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-primary-500 rounded-full"></div>
+                        <span className="text-sm text-neutral-700 dark:text-neutral-300">Email Automation</span>
+                      </div>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                        {(stats.timeSaved * 0.4).toFixed(1)}h
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">8.5h</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-accent-500 rounded-full"></div>
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Task Management</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-accent-500 rounded-full"></div>
+                        <span className="text-sm text-neutral-700 dark:text-neutral-300">Task Management</span>
+                      </div>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                        {(stats.timeSaved * 0.3).toFixed(1)}h
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">5.2h</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Notifications</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        <span className="text-sm text-neutral-700 dark:text-neutral-300">Notifications</span>
+                      </div>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                        {(stats.timeSaved * 0.2).toFixed(1)}h
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">3.8h</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Data Sync</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        <span className="text-sm text-neutral-700 dark:text-neutral-300">Data Sync</span>
+                      </div>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                        {(stats.timeSaved * 0.1).toFixed(1)}h
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-neutral-900 dark:text-white">2.3h</span>
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                      No time savings data yet
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -202,24 +218,23 @@ export default function AnalyticsPage() {
               <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
                 Recent Activity
               </h3>
-              <div className="space-y-3">
-                {[
-                  { time: '2 minutes ago', action: 'Workflow executed: Gmail → Slack notification', status: 'success' },
-                  { time: '15 minutes ago', action: 'New app connected: Google Calendar', status: 'success' },
-                  { time: '1 hour ago', action: 'Workflow executed: Calendar event → Team reminder', status: 'success' },
-                  { time: '2 hours ago', action: 'Workflow paused: Notion page updates', status: 'warning' },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-start space-x-3 p-3 bg-neutral-50 dark:bg-dark-700 rounded-lg">
-                    <div className={`w-2 h-2 rounded-full mt-2 ${
-                      item.status === 'success' ? 'bg-emerald-500' : 'bg-yellow-500'
-                    }`}></div>
+              {stats?.workflowExecutions && stats.workflowExecutions > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3 p-3 bg-neutral-50 dark:bg-dark-700 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-2"></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-neutral-900 dark:text-white">{item.action}</p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{item.time}</p>
+                      <p className="text-sm text-neutral-900 dark:text-white">System activity will appear here</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Showing recent workflow executions</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    No recent activity yet. Create and run workflows to see activity here.
+                  </p>
+                </div>
+              )}
             </div>
           </>
         )}
