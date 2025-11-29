@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { LayoutDashboard, Inbox, Zap, Link2, TrendingUp } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '#', icon: LayoutDashboard, current: true },
-  { name: 'Unified Inbox', href: '#', icon: Inbox, current: false },
-  { name: 'Workflows', href: '#', icon: Zap, current: false },
-  { name: 'Connections', href: '#', icon: Link2, current: false },
-  { name: 'Analytics', href: '#', icon: TrendingUp, current: false },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Unified Inbox', href: '/inbox', icon: Inbox },
+  { name: 'Workflows', href: '/workflows', icon: Zap },
+  { name: 'Connections', href: '/apps', icon: Link2 },
+  { name: 'Analytics', href: '/analytics', icon: TrendingUp },
 ];
 
 interface SidebarProps {
@@ -17,13 +17,20 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
-  const [currentNav, setCurrentNav] = useState('Dashboard');
+  const router = useRouter();
 
-  const handleNavClick = (name: string) => {
-    setCurrentNav(name);
+  const handleNavClick = (href: string) => {
+    router.push(href);
     if (onMobileClose) {
       onMobileClose();
     }
+  };
+
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return router.pathname === '/';
+    }
+    return router.pathname.startsWith(href);
   };
 
   return (
@@ -69,23 +76,23 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const isActive = currentNav === item.name;
+              const active = isActive(item.href);
               
               return (
                 <button
                   key={item.name}
-                  onClick={() => handleNavClick(item.name)}
+                  onClick={() => handleNavClick(item.href)}
                   className={`
                     w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg
                     text-sm font-medium transition-all duration-150
                     ${
-                      isActive
+                      active
                         ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 shadow-sm'
                         : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-dark-800 hover:text-neutral-900 dark:hover:text-neutral-200'
                     }
                   `}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500'}`} />
+                  <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500'}`} />
                   <span>{item.name}</span>
                 </button>
               );
