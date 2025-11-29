@@ -64,10 +64,10 @@ export default function WorkflowsList() {
     return (
       <div className="space-y-4">
         {[1, 2].map((i) => (
-          <div key={i} className="bg-white border border-neutral-200 rounded-lg p-6">
+          <div key={i} className="bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-700 rounded-lg p-6">
             <div className="animate-pulse space-y-3">
-              <div className="h-6 bg-neutral-100 rounded w-1/3"></div>
-              <div className="h-4 bg-neutral-100 rounded w-2/3"></div>
+              <div className="h-6 bg-neutral-100 dark:bg-dark-700 rounded w-1/3"></div>
+              <div className="h-4 bg-neutral-100 dark:bg-dark-700 rounded w-2/3"></div>
             </div>
           </div>
         ))}
@@ -77,14 +77,14 @@ export default function WorkflowsList() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
         <div className="flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-red-800">{error}</p>
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
             <button
               onClick={loadWorkflows}
-              className="mt-2 text-sm text-red-600 hover:text-red-700 underline"
+              className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline"
             >
               Try again
             </button>
@@ -96,16 +96,19 @@ export default function WorkflowsList() {
 
   if (workflows.length === 0) {
     return (
-      <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center">
-        <div className="w-16 h-16 mx-auto bg-neutral-100 rounded-full flex items-center justify-center mb-4">
-          <Zap className="w-8 h-8 text-neutral-400" />
+      <div className="bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-700 rounded-lg p-12 text-center">
+        <div className="w-16 h-16 mx-auto bg-neutral-100 dark:bg-dark-700 rounded-full flex items-center justify-center mb-4">
+          <Zap className="w-8 h-8 text-neutral-400 dark:text-neutral-500" />
         </div>
-        <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
           No workflows yet
         </h3>
-        <p className="text-sm text-neutral-600 mb-6">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
           Create your first workflow to automate tasks between apps
         </p>
+        <button className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white rounded-lg transition-colors font-medium">
+          Create Workflow
+        </button>
       </div>
     );
   }
@@ -115,16 +118,16 @@ export default function WorkflowsList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-neutral-900">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
             Your Workflows ({workflows.length})
           </h3>
-          <p className="text-sm text-neutral-600 mt-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             {workflows.filter((w) => w.active).length} active
           </p>
         </div>
         <button
           onClick={loadWorkflows}
-          className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+          className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
         >
           Refresh
         </button>
@@ -134,21 +137,21 @@ export default function WorkflowsList() {
       {workflows.map((workflow) => (
         <div
           key={workflow.id}
-          className="bg-white border border-neutral-200 rounded-lg p-6 hover:shadow-md transition-all"
+          className="bg-white dark:bg-dark-800 border border-neutral-200 dark:border-dark-700 rounded-lg p-6 hover:shadow-md dark:hover:shadow-dark-900/50 transition-all"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-3 mb-3">
-                <h3 className="text-base font-semibold text-neutral-900 truncate">
+                <h3 className="text-base font-semibold text-neutral-900 dark:text-white truncate">
                   {workflow.name}
                 </h3>
                 {workflow.active ? (
-                  <span className="flex items-center space-x-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full flex-shrink-0">
+                  <span className="flex items-center space-x-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium rounded-full flex-shrink-0">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
                     <span>Active</span>
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 bg-neutral-100 text-neutral-600 text-xs font-medium rounded-full flex-shrink-0">
+                  <span className="px-2 py-0.5 bg-neutral-100 dark:bg-dark-700 text-neutral-600 dark:text-neutral-400 text-xs font-medium rounded-full flex-shrink-0">
                     Paused
                   </span>
                 )}
@@ -156,28 +159,28 @@ export default function WorkflowsList() {
 
               {/* Workflow Flow */}
               <div className="flex items-center space-x-2 text-sm mb-3 overflow-x-auto">
-                <div className="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg whitespace-nowrap flex-shrink-0">
-                  <span className="font-medium text-purple-700">{workflow.trigger.app}</span>
-                  <span className="text-purple-600 mx-1">:</span>
-                  <span className="text-neutral-600">{workflow.trigger.event}</span>
+                <div className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg whitespace-nowrap flex-shrink-0">
+                  <span className="font-medium text-purple-700 dark:text-purple-400">{workflow.trigger.app}</span>
+                  <span className="text-purple-600 dark:text-purple-500 mx-1">:</span>
+                  <span className="text-neutral-600 dark:text-neutral-400">{workflow.trigger.event}</span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
                 {workflow.actions.map((action, idx) => (
                   <div key={idx} className="flex items-center space-x-2 flex-shrink-0">
-                    <div className="px-3 py-1.5 bg-primary-50 border border-primary-200 rounded-lg whitespace-nowrap">
-                      <span className="font-medium text-primary-700">{action.app}</span>
-                      <span className="text-primary-600 mx-1">:</span>
-                      <span className="text-neutral-600">{action.task}</span>
+                    <div className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg whitespace-nowrap">
+                      <span className="font-medium text-primary-700 dark:text-primary-400">{action.app}</span>
+                      <span className="text-primary-600 dark:text-primary-500 mx-1">:</span>
+                      <span className="text-neutral-600 dark:text-neutral-400">{action.task}</span>
                     </div>
                     {idx < workflow.actions.length - 1 && (
-                      <ArrowRight className="w-4 h-4 text-neutral-400" />
+                      <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-neutral-500" />
                     )}
                   </div>
                 ))}
               </div>
 
               {/* Stats */}
-              <div className="flex items-center space-x-4 text-xs text-neutral-500">
+              <div className="flex items-center space-x-4 text-xs text-neutral-500 dark:text-neutral-400">
                 <div className="flex items-center space-x-1">
                   <Clock className="w-3 h-3" />
                   <span>Created {new Date(workflow.createdAt).toLocaleDateString()}</span>
@@ -195,24 +198,24 @@ export default function WorkflowsList() {
             <div className="flex items-center space-x-2 flex-shrink-0">
               <button
                 onClick={() => handleToggleActive(workflow)}
-                className="p-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                className="p-2 border border-neutral-200 dark:border-dark-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-dark-700 transition-colors"
                 title={workflow.active ? 'Pause workflow' : 'Activate workflow'}
               >
                 {workflow.active ? (
-                  <Pause className="w-4 h-4 text-neutral-600" />
+                  <Pause className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
                 ) : (
-                  <Play className="w-4 h-4 text-neutral-600" />
+                  <Play className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
                 )}
               </button>
               <button
                 onClick={() => handleTest(workflow.id)}
-                className="px-3 py-2 border border-neutral-200 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                className="px-3 py-2 border border-neutral-200 dark:border-dark-600 rounded-lg text-sm font-medium hover:bg-neutral-50 dark:hover:bg-dark-700 text-neutral-700 dark:text-neutral-300 transition-colors"
               >
                 Test
               </button>
               <button
                 onClick={() => handleDelete(workflow.id)}
-                className="p-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                className="p-2 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 title="Delete workflow"
               >
                 <Trash2 className="w-4 h-4" />
@@ -224,3 +227,5 @@ export default function WorkflowsList() {
     </div>
   );
 }
+
+// Location: apps/frontend/components/WorkflowsList.tsx
