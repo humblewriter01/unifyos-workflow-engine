@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import prisma from '../../../lib/prisma';
+import { supabase } from '../../../lib/supabase';
 
 export default async function handler(
   req: NextApiRequest,
@@ -7,49 +7,61 @@ export default async function handler(
 ) {
   const { method } = req;
 
-  // TODO: Get real user ID from session
-  const userId = process.env.NODE_ENV === 'development' ? 'dev-user' : req.headers['x-user-id'] as string;
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.session?.user?.id;
 
-  if (!userId) {
-    return res.status(401).json({
-      success: false,
-      error: 'Unauthorized - No user session',
-    });
-  }
+    if (!userId) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        meta: {
+          total: 0,
+          active: 0,
+          totalExecutions: 0,
+        },
+      });
+    }
 
-  switch (method) {
-    case 'GET':
-      try {
-        // REAL database query - NO MOCK DATA
-        const workflows = await prisma.workflow.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          include: {
-            _count: {
-              select: { executions: true },
+    switch (method) {
+      case 'GET':
+        const { data: workflows, error } = await supabase
+          .from('workflows')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Failed to fetch workflows:', error);
+          return res.status(200).json({
+            success: true,
+            data: [],
+            meta: {
+              total: 0,
+              active: 0,
+              totalExecutions: 0,
             },
-          },
-        });
+          });
+        }
 
-        // Transform to match frontend interface
-        const transformedWorkflows = workflows.map(w => ({
+        const transformedWorkflows = (workflows || []).map((w: any) => ({
           id: w.id,
           name: w.name,
           trigger: {
-            app: w.triggerApp,
-            event: w.triggerEvent,
+            app: w.trigger_app,
+            event: w.trigger_event,
           },
-          actions: (w.actions as any[]).map((a: any) => ({
+          actions: (w.actions || []).map((a: any) => ({
             app: a.app,
             task: a.action || a.task,
           })),
           active: w.enabled,
-          createdAt: w.createdAt.toISOString(),
-          updatedAt: w.updatedAt.toISOString(),
-          executions: w.executionCount,
+          createdAt: new Date(w.created_at).toISOString(),
+          updatedAt: new Date(w.updated_at).toISOString(),
+          executions: w.execution_count,
         }));
 
-        const activeCount = workflows.filter(w => w.enabled).length;
+        const activeCount = workflows.filter((w: any) => w.enabled).length;
 
         return res.status(200).json({
           success: true,
@@ -57,21 +69,11 @@ export default async function handler(
           meta: {
             total: workflows.length,
             active: activeCount,
-            totalExecutions: workflows.reduce((sum, w) => sum + w.executionCount, 0),
+            totalExecutions: workflows.reduce((sum: number, w: any) => sum + w.execution_count, 0),
           },
         });
-      } catch (error: any) {
-        console.error('Failed to fetch workflows:', error);
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to fetch workflows',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        });
-      }
 
-    case 'POST':
-      try {
-        // Create new workflow from builder
+      case 'POST':
         const { name, trigger, actions } = req.body;
 
         if (!name || !trigger || !actions || actions.length === 0) {
@@ -81,15 +83,12 @@ export default async function handler(
           });
         }
 
-        // Validate trigger app is connected
-        const connectedApp = await prisma.appToken.findUnique({
-          where: {
-            userId_appName: {
-              userId,
-              appName: trigger.app.toLowerCase(),
-            },
-          },
-        });
+        const { data: connectedApp } = await supabase
+          .from('app_tokens')
+          .select('connected')
+          .eq('user_id', userId)
+          .eq('app_name', trigger.app.toLowerCase())
+          .maybeSingle();
 
         if (!connectedApp?.connected) {
           return res.status(400).json({
@@ -98,22 +97,31 @@ export default async function handler(
           });
         }
 
-        // Create workflow in database
-        const workflow = await prisma.workflow.create({
-          data: {
-            userId,
+        const { data: workflow, error: createError } = await supabase
+          .from('workflows')
+          .insert({
+            user_id: userId,
             name,
-            triggerApp: trigger.app,
-            triggerEvent: trigger.event,
-            triggerConfig: trigger.config || {},
+            trigger_app: trigger.app,
+            trigger_event: trigger.event,
+            trigger_config: trigger.config || {},
             actions: actions.map((a: any) => ({
               app: a.app,
               action: a.task || a.action,
               config: a.config || {},
             })),
             enabled: true,
-          },
-        });
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Failed to create workflow:', createError);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to create workflow',
+          });
+        }
 
         return res.status(201).json({
           success: true,
@@ -121,33 +129,33 @@ export default async function handler(
             id: workflow.id,
             name: workflow.name,
             trigger: {
-              app: workflow.triggerApp,
-              event: workflow.triggerEvent,
+              app: workflow.trigger_app,
+              event: workflow.trigger_event,
             },
-            actions: (workflow.actions as any[]).map((a: any) => ({
+            actions: (workflow.actions || []).map((a: any) => ({
               app: a.app,
               task: a.action,
             })),
             active: workflow.enabled,
-            createdAt: workflow.createdAt.toISOString(),
+            createdAt: new Date(workflow.created_at).toISOString(),
             executions: 0,
           },
           message: 'Workflow created successfully',
         });
-      } catch (error: any) {
-        console.error('Failed to create workflow:', error);
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to create workflow',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        });
-      }
 
-    default:
-      res.setHeader('Allow', ['GET', 'POST']);
-      return res.status(405).json({
-        success: false,
-        error: `Method ${method} Not Allowed`,
-      });
+      default:
+        res.setHeader('Allow', ['GET', 'POST']);
+        return res.status(405).json({
+          success: false,
+          error: `Method ${method} Not Allowed`,
+        });
+    }
+  } catch (error: any) {
+    console.error('API Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
   }
 }

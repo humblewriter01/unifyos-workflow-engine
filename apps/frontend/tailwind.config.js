@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,7 +9,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Professional B2B Color Palette
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -48,6 +48,12 @@ module.exports = {
           900: '#171717',
           950: '#0a0a0a',
         },
+        dark: {
+          600: '#2d3748',
+          700: '#1a202c',
+          800: '#171923',
+          900: '#0f1419',
+        },
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-in-out',
@@ -78,4 +84,4 @@ module.exports = {
     },
   },
   plugins: [],
-        }
+}

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import prisma from '../../../lib/prisma';
+import { supabase } from '../../../lib/supabase';
 
 // Available apps catalog
 const AVAILABLE_APPS = [
@@ -59,16 +59,6 @@ export default async function handler(
 ) {
   const { method } = req;
 
-  // TODO: Get real user ID from session
-  const userId = process.env.NODE_ENV === 'development' ? 'dev-user' : req.headers['x-user-id'] as string;
-
-  if (!userId) {
-    return res.status(401).json({
-      success: false,
-      error: 'Unauthorized - No user session',
-    });
-  }
-
   if (method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).json({
@@ -78,34 +68,61 @@ export default async function handler(
   }
 
   try {
-    // Get user's connected apps from database
-    const connectedTokens = await prisma.appToken.findMany({
-      where: { userId },
-      select: {
-        appName: true,
-        connected: true,
-        createdAt: true,
-      },
-    });
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.session?.user?.id;
 
-    // Create a map of connected apps
+    if (!userId) {
+      return res.status(200).json({
+        success: true,
+        data: AVAILABLE_APPS.map(app => ({
+          ...app,
+          icon: app.id,
+          connected: false,
+        })),
+        meta: {
+          total: AVAILABLE_APPS.length,
+          connected: 0,
+        },
+      });
+    }
+
+    const { data: connectedTokens, error } = await supabase
+      .from('app_tokens')
+      .select('app_name, connected, created_at')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Failed to fetch app tokens:', error);
+      return res.status(200).json({
+        success: true,
+        data: AVAILABLE_APPS.map(app => ({
+          ...app,
+          icon: app.id,
+          connected: false,
+        })),
+        meta: {
+          total: AVAILABLE_APPS.length,
+          connected: 0,
+        },
+      });
+    }
+
     const connectedMap = new Map<string, { connected: boolean; connectedAt: string }>(
-      connectedTokens.map((token: { appName: string; connected: boolean; createdAt: Date }) => [
-        token.appName.toLowerCase(),
+      (connectedTokens || []).map((token: any) => [
+        token.app_name.toLowerCase(),
         {
           connected: token.connected,
-          connectedAt: token.createdAt.toISOString().split('T')[0],
+          connectedAt: new Date(token.created_at).toISOString().split('T')[0],
         }
       ])
     );
 
-    // Merge with available apps catalog
     const apps = AVAILABLE_APPS.map(app => {
       const connectionInfo = connectedMap.get(app.id);
       return {
         id: app.id,
         name: app.name,
-        icon: app.id, // Frontend maps this to Lucide icons
+        icon: app.id,
         description: app.description,
         category: app.category,
         connected: connectionInfo?.connected || false,
