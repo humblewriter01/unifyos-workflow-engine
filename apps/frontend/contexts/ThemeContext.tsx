@@ -57,8 +57,17 @@ export const useTheme = () => {
   }
   
   const context = useContext(ThemeContext);
+  
+  // NEVER throw - always return a valid theme object
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    console.warn('useTheme called outside ThemeProvider - returning default theme');
+    return { 
+      theme: 'light' as Theme, 
+      toggleTheme: () => {
+        console.warn('ThemeProvider not available');
+      } 
+    };
   }
+  
   return context;
 };
