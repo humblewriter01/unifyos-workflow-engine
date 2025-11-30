@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Send email to support team + your personal email
+    // Send email to support team using environment variable
     const supportResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       body: JSON.stringify({
         from: 'UnifyOS Support <support@unifyos.com>',
-        to: ['ameenujaafar59@gmail.com'], // Your personal email for support
+        to: [process.env.SUPPORT_EMAIL], // ← Using environment variable
         subject: `[UnifyOS Support] ${category}: ${subject}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
