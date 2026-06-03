@@ -36,10 +36,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  if (!mounted) {
-    return <div className={theme === 'dark' ? 'dark' : ''}>{children}</div>;
-  }
-
+  // FIXED: Return provider wrapper regardless of mounted state
+  // This prevents SSR hydration mismatches and eliminates div wrapper issues
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
