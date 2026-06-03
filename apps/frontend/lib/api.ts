@@ -136,6 +136,15 @@ export interface Workflow {
   executions?: number;
 }
 
+// FIXED: Define explicit response type for workflow test
+interface WorkflowTestResponse {
+  testResult: {
+    status: 'success' | 'failure';
+    message: string;
+    duration?: number;
+  };
+}
+
 export const workflowsApi = {
   // Get all workflows
   getAll: async (): Promise<Workflow[]> => {
@@ -174,14 +183,14 @@ export const workflowsApi = {
     });
   },
 
-  // Test a workflow
+  // Test a workflow (FIXED - proper type safety)
   test: async (id: string): Promise<{ success: boolean; message: string }> => {
-    const result = await fetchApi<any>(`/workflows/${id}/test`, {
+    const result = await fetchApi<WorkflowTestResponse>(`/workflows/${id}/test`, {
       method: 'POST',
     });
     return {
-      success: result.testResult?.status === 'success',
-      message: 'Workflow test completed successfully',
+      success: result.testResult.status === 'success',
+      message: result.testResult.message || 'Workflow test completed successfully',
     };
   },
 };
