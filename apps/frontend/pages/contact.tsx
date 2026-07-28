@@ -5,7 +5,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import { Mail, MessageCircle, HelpCircle, Send, Loader2 } from 'lucide-react';
 
 export default function ContactPage() {
-  const { data: session } = useSession();
+  const { data: session } = useSession() || {};
   const [formData, setFormData] = useState({
     name: session?.user?.name || '',
     email: session?.user?.email || '',

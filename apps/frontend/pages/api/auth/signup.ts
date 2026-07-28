@@ -53,31 +53,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-// apps/frontend/lib/email.ts (Email utility)
-export async function sendVerificationEmail(email: string, userId: string) {
-  // TODO: Implement email sending with your provider (SendGrid, AWS SES, etc.)
-  const verificationLink = `${process.env.NEXTAUTH_URL}/api/auth/verify?token=${userId}`;
-  
-  console.log(`Send verification email to ${email}: ${verificationLink}`);
-  
-  // Example with SendGrid:
-  // await sendgrid.send({
-  //   to: email,
-  //   from: 'noreply@unifyos.com',
-  //   subject: 'Verify your UnifyOS account',
-  //   html: `<a href="${verificationLink}">Verify Email</a>`,
-  // });
-}
 
-export async function sendPasswordResetEmail(email: string, resetToken: string) {
-  const resetLink = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
-  console.log(`Send password reset email to ${email}: ${resetLink}`);
-  
-  // Example with SendGrid:
-  // await sendgrid.send({
-  //   to: email,
-  //   from: 'noreply@unifyos.com',
-  //   subject: 'Reset your UnifyOS password',
-  //   html: `<a href="${resetLink}">Reset Password</a>`,
-  // });
-}

@@ -5,7 +5,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { Trash2, Download, AlertTriangle, Shield, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function AccountSettings() {
-  const { data: session } = useSession();
+  const { data: session } = useSession() || {};
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [loading, setLoading] = useState(false);

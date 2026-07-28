@@ -6,7 +6,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { User, Mail, Camera, Save, Loader2, CheckCircle } from 'lucide-react';
 
 export default function ProfileSettings() {
-  const { data: session, update } = useSession();
+  const { data: session, update } = useSession() || {};
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
