@@ -13,6 +13,7 @@ const iconMap: Record<string, any> = {
   asana: CheckSquare,
   hubspot: Target,
   salesforce: Cloud,
+  monday: CheckSquare,
 };
 
 export default function AppConnections() {

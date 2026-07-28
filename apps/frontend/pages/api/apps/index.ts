@@ -51,6 +51,12 @@ const AVAILABLE_APPS = [
     description: 'Customer relationship management',
     category: 'Sales & CRM',
   },
+  {
+    id: 'monday',
+    name: 'Monday.com',
+    description: 'Work management and team collaboration',
+    category: 'Project Management',
+  },
 ];
 
 export default async function handler(
