@@ -51,6 +51,10 @@ export default function AppConnections() {
   const connectedCount = apps.filter((app) => app.connected).length;
 
   const handleConnect = (app: App) => {
+    if (app.configured === false) {
+      alert(`${app.name} is not configured yet. Add its API credentials to enable it.`);
+      return;
+    }
     setSelectedApp(app);
     setShowConnectModal(true);
   };
@@ -200,12 +204,17 @@ export default function AppConnections() {
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">{app.category}</span>
                   </div>
                 </div>
-                {app.connected && (
+                {app.connected ? (
                   <span className="flex items-center space-x-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium rounded-full">
                     <Check className="w-3 h-3" />
                     <span>Connected</span>
                   </span>
-                )}
+                ) : app.configured === false ? (
+                  <span className="flex items-center space-x-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded-full">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>Setup required</span>
+                  </span>
+                ) : null}
               </div>
 
               {/* App Description */}
@@ -228,9 +237,14 @@ export default function AppConnections() {
               ) : (
                 <button
                   onClick={() => handleConnect(app)}
-                  className="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  disabled={app.configured === false}
+                  className={`w-full px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    app.configured === false
+                      ? 'bg-neutral-200 dark:bg-dark-700 text-neutral-500 dark:text-neutral-400 cursor-not-allowed'
+                      : 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white'
+                  }`}
                 >
-                  Connect {app.name}
+                  {app.configured === false ? 'Add API keys to enable' : `Connect ${app.name}`}
                 </button>
               )}
             </div>

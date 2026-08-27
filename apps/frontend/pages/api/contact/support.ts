@@ -5,7 +5,16 @@ import { authOptions } from '../auth/[...nextauth]';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  if (!process.env.RESEND_API_KEY || !process.env.SUPPORT_EMAIL) {
+    return res.status(503).json({
+      success: false,
+      error: 'Support email is not configured yet.',
+      code: 'EMAIL_NOT_CONFIGURED',
+    });
   }
 
   const session = await getServerSession(req, res, authOptions);

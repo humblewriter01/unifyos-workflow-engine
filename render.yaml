@@ -2,8 +2,13 @@ services:
   - type: web
     name: unifyos-platform
     env: node
-    buildCommand: cd apps/frontend && npm install && npm run build
-    startCommand: cd apps/frontend && npm start
+    buildCommand: >-
+      npm ci && npm run build &&
+      mkdir -p apps/frontend/.next/standalone/apps/frontend/.next &&
+      cp -R apps/frontend/.next/static apps/frontend/.next/standalone/apps/frontend/.next/static &&
+      if [ -d apps/frontend/public ]; then cp -R apps/frontend/public apps/frontend/.next/standalone/apps/frontend/public; fi
+    startCommand: node apps/frontend/.next/standalone/apps/frontend/server.js
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production

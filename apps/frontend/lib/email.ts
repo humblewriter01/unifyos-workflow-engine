@@ -1,10 +1,6 @@
 // apps/frontend/lib/email.ts
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client for email logs (optional)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { getAppBaseUrl } from './integrations';
+import { supabase } from './supabase';
 
 // Email templates
 const emailTemplates = {
@@ -109,9 +105,10 @@ export async function sendEmail(to: string, subject: string, html: string, metad
 
     const data = await response.json();
     
-    // Log email to Supabase (optional)
-    try {
-      await supabase.from('email_logs').insert({
+    // Log email to Supabase when the optional database service is enabled.
+    if (supabase) {
+      try {
+        await supabase.from('email_logs').insert({
         to_email: to,
         subject,
         status: 'sent',
@@ -119,9 +116,10 @@ export async function sendEmail(to: string, subject: string, html: string, metad
         provider_id: data.id,
         metadata,
         sent_at: new Date().toISOString(),
-      });
-    } catch (logError) {
-      console.warn('Failed to log email to Supabase:', logError);
+        });
+      } catch (logError) {
+        console.warn('Failed to log email to Supabase:', logError);
+      }
     }
 
     console.log(`✅ Email sent to ${to}: ${data.id}`);
@@ -129,27 +127,29 @@ export async function sendEmail(to: string, subject: string, html: string, metad
   } catch (error) {
     console.error('❌ Email sending failed:', error);
     
-    // Log failure to Supabase
-    try {
-      await supabase.from('email_logs').insert({
+    // Log failure to Supabase when the optional database service is enabled.
+    if (supabase) {
+      try {
+        await supabase.from('email_logs').insert({
         to_email: to,
         subject,
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
         metadata,
         attempted_at: new Date().toISOString(),
-      });
-    } catch (logError) {
-      console.warn('Failed to log email error:', logError);
+        });
+      } catch (logError) {
+        console.warn('Failed to log email error:', logError);
+      }
     }
-    
+
     throw error;
   }
 }
 
 // Specific email functions
 export async function sendVerificationEmail(email: string, userId: string) {
-  const verificationLink = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${userId}`;
+  const verificationLink = `${getAppBaseUrl()}/api/auth/verify-email?token=${userId}`;
   
   return sendEmail(
     email,
@@ -160,7 +160,7 @@ export async function sendVerificationEmail(email: string, userId: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, resetToken: string) {
-  const resetLink = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
+  const resetLink = `${getAppBaseUrl()}/auth/reset-password?token=${resetToken}`;
   
   return sendEmail(
     email,

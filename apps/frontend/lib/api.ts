@@ -4,8 +4,9 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface ApiError {
-  message: string;
-  statusCode: number;
+  message?: string;
+  error?: string;
+  statusCode?: number;
 }
 
 interface ApiResponse<T> {
@@ -34,7 +35,7 @@ async function fetchApi<T>(
         message: 'API request failed',
         statusCode: response.status,
       }));
-      throw new Error(error.message || 'API request failed');
+      throw new Error(error.message || error.error || 'API request failed');
     }
 
     const result: ApiResponse<T> = await response.json();
@@ -93,6 +94,7 @@ export interface App {
   icon: string;
   description: string;
   connected: boolean;
+  configured?: boolean;
   category: string;
   connectedAt?: string;
 }

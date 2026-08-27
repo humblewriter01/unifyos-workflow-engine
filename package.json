@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "dev": "cd apps/frontend && npm run dev",
-    "build": "cd apps/frontend && npm run build",
+    "build": "npm run prisma:generate && cd apps/frontend && npm run build",
+    "prisma:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
     "start": "cd apps/frontend && npm start",
     "docker:dev": "docker-compose up --build"
   },

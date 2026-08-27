@@ -1,84 +1,101 @@
 # UnifyOS Workflow Engine
 
-UnifyOS is a powerful, unified workflow automation platform that connects your favorite productivity tools. Manage your notifications, automate repetitive tasks, and gain insights into your productivity from a single dashboard.
+UnifyOS is a workflow automation platform for connecting productivity tools, viewing notifications, managing automations, and monitoring productivity metrics from one dashboard.
 
-## 🚀 Features
+## Features
 
-- **Unified Inbox**: View and manage notifications from all your connected apps in one place.
-- **Workflow Builder**: Create complex automations between apps with a simple drag-and-drop interface.
-- **App Integrations**: Seamlessly connect with Google (Gmail & Calendar), Slack, Notion, Trello, Asana, and Monday.com.
-- **Productivity Analytics**: Track time saved and workflow efficiency.
-- **Secure & Private**: All your credentials are encrypted and stored securely.
+The application includes a unified inbox, workflow management, an integration catalog, analytics, password authentication, optional email delivery, and OAuth activation for configured providers. The application is designed to start safely when optional provider credentials have not yet been supplied.
 
-## 🛠️ Tech Stack
+## Technology
 
-- **Frontend**: Next.js, TypeScript, Tailwind CSS, Lucide React
-- **Backend**: Node.js, Express, Prisma ORM
-- **Database**: PostgreSQL / Supabase
-- **Authentication**: NextAuth.js
-- **Styling**: Tailwind CSS
+The frontend is a Next.js 14 application with TypeScript, React, Tailwind CSS, and NextAuth.js. Authentication data is stored in PostgreSQL through Prisma. Dashboard and integration-token data uses the optional Supabase service. Production deployment is configured for Render using the Next.js standalone server.
 
-## 📋 Prerequisites
+## Local setup
 
-- Node.js (v18 or higher)
-- PostgreSQL database (or Supabase project)
-- API keys for the integrations you wish to enable
+Install dependencies from the repository root so the workspace lockfile is respected:
 
-## ⚙️ Setup Instructions
-
-### 1. Clone the repository
 ```bash
-git clone https://github.com/humblewriter01/unifyos-workflow-engine.git
-cd unifyos-workflow-engine
+npm ci
+npm run build
 ```
 
-### 2. Install dependencies
-```bash
-# Install root dependencies
-npm install
+Copy `.env.example` to the environment file used by your local process and set the core authentication values. `DATABASE_URL`, `NEXTAUTH_URL`, and `NEXTAUTH_SECRET` are core settings. Supabase, Resend, and provider credentials are optional.
 
-# Install app-specific dependencies
-cd apps/frontend && npm install
-cd ../api && npm install
+To run the application locally after building:
+
+```bash
+npm start
 ```
 
-### 3. Environment Configuration
-Copy the `.env.example` file to `.env.local` in the root directory and fill in your API keys:
-```bash
-cp .env.example .env.local
+The application is available at `http://localhost:3000` unless `PORT` is set.
+
+## Render deployment
+
+The checked-in `render.yaml` performs the following steps from the repository root:
+
+```text
+npm ci
+npm run build
+copy Next.js standalone static assets
+start apps/frontend/.next/standalone/apps/frontend/server.js
 ```
 
-### 4. Database Setup
+The build script generates the Prisma client before compiling Next.js. Render uses `/api/health` as its health check. Do not use `next start` with the standalone output because Next.js reports that combination as unsupported.
+
+## Environment configuration
+
+Only the following values are required for the authentication portion of the application:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection used by Prisma and NextAuth |
+| `NEXTAUTH_URL` | Yes in production | Public application URL, including the Render URL |
+| `NEXTAUTH_SECRET` | Yes | Session and OAuth-state signing secret |
+| `NODE_ENV` | Recommended | Set to `production` on Render |
+
+The following services are optional. If they are omitted, the application still starts and read-only dashboard endpoints return safe empty states with a degraded metadata flag.
+
+| Service | Variables | Behavior when omitted |
+| --- | --- | --- |
+| Supabase dashboard data | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Apps, workflows, notifications, and analytics remain loadable with empty-state responses |
+| Email and support | `RESEND_API_KEY`, `SUPPORT_EMAIL` | Email sign-in, verification, password reset, and support delivery report that email is not configured |
+| OAuth token storage | `ENCRYPTION_KEY` | Provider connection is disabled until a 32-byte hexadecimal key is supplied |
+
+## Activating integrations later
+
+Add the complete credential set for a provider to Render, redeploy, and confirm its status through `/api/health` or `/api/apps`. The app catalog marks providers as `configured` only when all required values are present. A provider without credentials is displayed as `Setup required` and cannot be connected accidentally.
+
+| Integration | Environment variables |
+| --- | --- |
+| Google Gmail and Calendar | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Slack | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Notion | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Asana | `ASANA_CLIENT_ID`, `ASANA_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Monday.com | `MONDAY_CLIENT_ID`, `MONDAY_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| HubSpot | `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Salesforce | `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Trello | `TRELLO_API_KEY`, `TRELLO_API_SECRET` |
+
+Configured providers with implemented OAuth endpoints use the connection flow under `/api/apps/:id/connect` and `/api/apps/:id/callback`. Trello is kept in the catalog for later activation but still requires its provider-specific OAuth exchange to be added before it can connect.
+
+## Verification commands
+
 ```bash
-cd apps/api
-npx prisma generate
-npx prisma db push
+npm ci
+npm run build
+npm run prisma:generate
 ```
 
-### 5. Run the Application
-Start the API server:
+For a running local server, verify:
+
 ```bash
-cd apps/api
-npm run dev
+curl http://localhost:3000/api/health
+curl http://localhost:3000/api/apps
+curl http://localhost:3000/api/workflows
+curl http://localhost:3000/api/analytics/stats
+curl http://localhost:3000/api/notifications
 ```
 
-Start the Frontend:
-```bash
-cd apps/frontend
-npm run dev
-```
-
-The application will be available at `http://localhost:3000`.
-
-## 🔌 Activating Integrations
-
-To activate an integration, simply add the corresponding API keys to your `.env.local` file. The platform currently supports:
-
-- **Google (Gmail & Calendar)**: Automate emails and schedule events.
-- **Slack**: Send messages and receive real-time notifications.
-- **Notion**: Create pages and sync database updates.
-- **Trello/Asana/Monday.com**: Manage tasks and project boards across different platforms.
-
-## 📄 License
+## License
 
 This project is licensed under the MIT License.

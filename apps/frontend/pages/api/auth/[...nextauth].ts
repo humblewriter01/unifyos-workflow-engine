@@ -7,130 +7,85 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import prisma from '../../../lib/prisma';
 
+const providers = [
+  CredentialsProvider({
+    name: 'credentials',
+    credentials: {
+      email: { label: 'Email', type: 'email' },
+      password: { label: 'Password', type: 'password' },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials?.password) {
+        throw new Error('Invalid credentials');
+      }
+
+      const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+      if (!user || !user.passwordHash) throw new Error('Invalid credentials');
+
+      const isPasswordValid = await compare(credentials.password, user.passwordHash);
+      if (!isPasswordValid) throw new Error('Invalid credentials');
+      if (!user.emailVerified) throw new Error('Please verify your email before logging in');
+
+      await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      return { id: user.id, email: user.email, name: user.name, plan: user.plan };
+    },
+  }),
+  ...(process.env.RESEND_API_KEY
+    ? [
+        EmailProvider({
+          server: {
+            host: process.env.EMAIL_SERVER_HOST || 'smtp.resend.com',
+            port: parseInt(process.env.EMAIL_SERVER_PORT || '587', 10),
+            auth: {
+              user: process.env.EMAIL_SERVER_USER || 'resend',
+              pass: process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY,
+            },
+          },
+          from: process.env.EMAIL_FROM || 'UnifyOS <onboarding@resend.dev>',
+          sendVerificationRequest: async ({ identifier, url, provider }) => {
+            const response = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: provider.from,
+                to: identifier,
+                subject: 'Sign in to UnifyOS',
+                html: `<p>Click <a href="${url}">here</a> to sign in to UnifyOS.</p>`,
+              }),
+            });
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(`Resend error: ${error.message || response.statusText}`);
+            }
+          },
+        }),
+      ]
+    : []),
+  ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ? [
+        GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          authorization: {
+            params: {
+              prompt: 'consent',
+              access_type: 'offline',
+              response_type: 'code',
+              scope: 'openid email profile',
+            },
+          },
+        }),
+      ]
+    : []),
+];
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  providers: [
-    // Email Provider for verification & password reset
-    EmailProvider({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST || 'smtp.resend.com',
-        port: parseInt(process.env.EMAIL_SERVER_PORT || '587'),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER || 'resend',
-          pass: process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY,
-        },
-      },
-      from: process.env.EMAIL_FROM || 'UnifyOS <onboarding@resend.dev>',
-      sendVerificationRequest: async ({ identifier, url, provider }) => {
-        try {
-          const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: provider.from,
-              to: identifier,
-              subject: 'Sign in to UnifyOS',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h1 style="color: #2563eb;">Sign in to UnifyOS</h1>
-                  <p>Click the link below to sign in to your account:</p>
-                  <a href="${url}" 
-                     style="background-color: #2563eb; color: white; padding: 12px 24px; 
-                            text-decoration: none; border-radius: 6px; display: inline-block;">
-                    Sign in to UnifyOS
-                  </a>
-                  <p style="margin-top: 20px; color: #6b7280;">
-                    Or copy and paste this link in your browser:<br/>
-                    <code style="background-color: #f3f4f6; padding: 4px 8px; border-radius: 4px;">
-                      ${url}
-                    </code>
-                  </p>
-                  <p style="color: #6b7280; font-size: 14px;">
-                    This link will expire in 24 hours.
-                  </p>
-                </div>
-              `,
-            }),
-          });
-
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(`Resend error: ${error.message}`);
-          }
-
-          console.log(`✅ Sign-in email sent to ${identifier}`);
-        } catch (error) {
-          console.error('❌ Email sending error:', error);
-          throw error;
-        }
-      },
-    }),
-
-    // Email/Password Provider
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Invalid credentials');
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-
-        if (!user || !user.passwordHash) {
-          throw new Error('Invalid credentials');
-        }
-
-        const isPasswordValid = await compare(
-          credentials.password,
-          user.passwordHash
-        );
-
-        if (!isPasswordValid) {
-          throw new Error('Invalid credentials');
-        }
-
-        if (!user.emailVerified) {
-          throw new Error('Please verify your email before logging in');
-        }
-
-        // Update last login
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLoginAt: new Date() },
-        });
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          plan: user.plan,
-        };
-      },
-    }),
-
-    // Google OAuth Provider
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: 'consent',
-          access_type: 'offline',
-          response_type: 'code',
-          scope: 'openid email profile',
-        },
-      },
-    }),
-  ],
+  providers: providers as NextAuthOptions['providers'],
+  secret: process.env.NEXTAUTH_SECRET,
 
   session: {
     strategy: 'jwt',
