@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import { getIntegrationStatus } from '../../../lib/integrations';
-import { supabase } from '../../../lib/supabase';
+import prisma from '../../../lib/prisma';
 
 const AVAILABLE_APPS = [
   { id: 'slack', name: 'Slack', description: 'Team messaging and collaboration', category: 'Communication' },
@@ -37,65 +37,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    if (!supabase) {
-      const apps = getCatalogApps();
-      return res.status(200).json({
-        success: true,
-        data: apps,
-        meta: { total: apps.length, connected: 0, supabaseConfigured: false },
-      });
-    }
-
     const session = await getServerSession(req, res, authOptions);
     const userId = session?.user?.id;
-
     if (!userId) {
       const apps = getCatalogApps();
-      return res.status(200).json({
-        success: true,
-        data: apps,
-        meta: { total: apps.length, connected: 0, supabaseConfigured: true },
-      });
+      return res.status(200).json({ success: true, data: apps, meta: { total: apps.length, connected: 0, tokenStore: 'prisma' } });
     }
 
-    const { data: connectedTokens, error } = await supabase
-      .from('app_tokens')
-      .select('app_name, connected, created_at')
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Failed to fetch app tokens:', error);
-      const apps = getCatalogApps();
-      return res.status(200).json({
-        success: true,
-        data: apps,
-        meta: { total: apps.length, connected: 0, supabaseConfigured: true },
-      });
-    }
-
+    const connectedTokens = await prisma.appToken.findMany({
+      where: { userId },
+      select: { appName: true, connected: true, createdAt: true },
+    });
     const connectedMap = new Map<string, { connected: boolean; connectedAt?: string }>(
-      (connectedTokens || []).map((token: { app_name: string; connected: boolean; created_at: string }) => [
-        token.app_name.toLowerCase(),
-        {
-          connected: token.connected,
-          connectedAt: token.created_at ? new Date(token.created_at).toISOString().split('T')[0] : undefined,
-        },
+      connectedTokens.map((token) => [
+        token.appName.toLowerCase(),
+        { connected: token.connected, connectedAt: token.createdAt.toISOString().split('T')[0] },
       ]),
     );
     const apps = getCatalogApps(connectedMap);
-    const connectedCount = apps.filter((app) => app.connected).length;
-
     return res.status(200).json({
       success: true,
       data: apps,
-      meta: { total: apps.length, connected: connectedCount, supabaseConfigured: true },
+      meta: { total: apps.length, connected: apps.filter((app) => app.connected).length, tokenStore: 'prisma' },
     });
   } catch (error) {
     console.error('Failed to fetch apps:', error);
-    return res.status(200).json({
-      success: true,
-      data: getCatalogApps(),
-      meta: { total: AVAILABLE_APPS.length, connected: 0, supabaseConfigured: Boolean(supabase) },
-    });
+    return res.status(503).json({ success: false, error: 'Unable to load connected apps right now.' });
   }
 }

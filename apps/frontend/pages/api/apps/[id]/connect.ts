@@ -3,9 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]';
 import { getAppBaseUrl, getIntegrationStatus } from '../../../../lib/integrations';
 import { createOAuthState } from '../../../../lib/oauth';
+import { getEnv } from '../../../../lib/env';
+import prisma from '../../../../lib/prisma';
 
 function oauthUrl(appId: string, state: string): string | undefined {
-  const callback = `${getAppBaseUrl()}/api/apps/${appId}/callback`;
+  const callback = appId === 'notion'
+    ? getEnv('NOTION_REDIRECT_URI') || `${getAppBaseUrl()}/api/apps/notion/callback`
+    : `${getAppBaseUrl()}/api/apps/${appId}/callback`;
   const params = new URLSearchParams({
     response_type: 'code',
     redirect_uri: callback,
@@ -14,12 +18,12 @@ function oauthUrl(appId: string, state: string): string | undefined {
 
   switch (appId) {
     case 'slack':
-      params.set('client_id', process.env.SLACK_CLIENT_ID!);
+      params.set('client_id', getEnv('SLACK_CLIENT_ID')!);
       params.set('scope', 'channels:read,chat:write,users:read');
       return `https://slack.com/oauth/v2/authorize?${params}`;
     case 'gmail':
     case 'calendar':
-      params.set('client_id', process.env.GOOGLE_CLIENT_ID!);
+      params.set('client_id', getEnv('GOOGLE_CLIENT_ID')!);
       params.set('access_type', 'offline');
       params.set('prompt', 'consent');
       params.set('scope', appId === 'gmail'
@@ -27,23 +31,23 @@ function oauthUrl(appId: string, state: string): string | undefined {
         : 'openid email profile https://www.googleapis.com/auth/calendar');
       return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     case 'notion':
-      params.set('client_id', process.env.NOTION_CLIENT_ID!);
+      params.set('client_id', getEnv('NOTION_CLIENT_ID')!);
       params.set('owner', 'user');
       return `https://api.notion.com/v1/oauth/authorize?${params}`;
     case 'asana':
-      params.set('client_id', process.env.ASANA_CLIENT_ID!);
+      params.set('client_id', getEnv('ASANA_CLIENT_ID')!);
       params.set('scope', 'default');
       return `https://app.asana.com/-/oauth_authorize?${params}`;
     case 'monday':
-      params.set('client_id', process.env.MONDAY_CLIENT_ID!);
+      params.set('client_id', getEnv('MONDAY_CLIENT_ID')!);
       params.set('scope', 'me:read boards:read boards:write');
       return `https://auth.monday.com/oauth2/authorize?${params}`;
     case 'hubspot':
-      params.set('client_id', process.env.HUBSPOT_CLIENT_ID!);
+      params.set('client_id', getEnv('HUBSPOT_CLIENT_ID')!);
       params.set('scope', 'crm.objects.contacts.read crm.objects.contacts.write');
       return `https://app.hubspot.com/oauth/authorize?${params}`;
     case 'salesforce':
-      params.set('client_id', process.env.SALESFORCE_CLIENT_ID!);
+      params.set('client_id', getEnv('SALESFORCE_CLIENT_ID')!);
       params.set('display', 'popup');
       return `https://login.salesforce.com/services/oauth2/authorize?${params}`;
     default:
@@ -91,11 +95,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'DELETE') {
-    return res.status(200).json({
-      success: true,
-      data: { appId, connected: false },
-      message: `${status.name} disconnected successfully`,
-    });
+    const session = await getServerSession(req, res, authOptions);
+    const userId = session?.user?.id;
+    if (!userId) return res.status(401).json({ success: false, error: 'Sign in before disconnecting an integration.' });
+    await prisma.appToken.deleteMany({ where: { userId, appName: appId } });
+    return res.status(200).json({ success: true, data: { appId, connected: false }, message: `${status.name} disconnected successfully` });
   }
 
   res.setHeader('Allow', ['POST', 'DELETE']);

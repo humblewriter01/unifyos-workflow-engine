@@ -29,3 +29,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS two_factor_enabled boolean DEFAULT false NOT NULL,
+  ADD COLUMN IF NOT EXISTS two_factor_secret text,
+  ADD COLUMN IF NOT EXISTS two_factor_recovery_codes jsonb;

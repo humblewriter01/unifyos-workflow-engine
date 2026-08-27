@@ -63,10 +63,9 @@ export default function AppConnections() {
     if (!selectedApp) return;
     
     try {
-      await api.apps.connect(selectedApp.id);
-      await loadApps();
-      setShowConnectModal(false);
-      setSelectedApp(null);
+      const result = await api.apps.connect(selectedApp.id);
+      if (!result.authUrl) throw new Error('This provider did not return an authorization URL.');
+      window.location.assign(result.authUrl);
     } catch (err) {
       console.error('Failed to connect app:', err);
       alert('Failed to connect app. Please try again.');
@@ -325,7 +324,7 @@ export default function AppConnections() {
                 {/* Security Note */}
                 <div className="mt-4 flex items-center justify-center space-x-1 text-xs text-neutral-500 dark:text-neutral-400">
                   <span>🔒</span>
-                  <span>Your credentials are encrypted and never stored</span>
+                  <span>Your provider tokens are encrypted at rest and never sent to the browser</span>
                 </div>
               </div>
             </div>

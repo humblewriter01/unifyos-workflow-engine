@@ -16,7 +16,10 @@ model User {
   emailVerified Boolean   @default(false) @map("email_verified")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
-  lastLoginAt   DateTime? @map("last_login_at")
+  lastLoginAt          DateTime? @map("last_login_at")
+  twoFactorEnabled     Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret      String?   @map("two_factor_secret") @db.Text
+  twoFactorRecoveryCodes Json?   @map("two_factor_recovery_codes")
 
   accounts      Account[]
   sessions      Session[]

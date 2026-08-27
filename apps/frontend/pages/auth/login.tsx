@@ -16,6 +16,7 @@ export default function LoginPage() {
   const callbackUrl = useMemo(() => getSafeCallbackUrl(router.query.callbackUrl), [router.query.callbackUrl]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(false);
@@ -61,6 +62,7 @@ export default function LoginPage() {
       const result = await signIn('credentials', {
         email: normalizedEmail,
         password,
+        twoFactorCode: twoFactorCode.trim(),
         redirect: false,
         callbackUrl,
       });
@@ -144,6 +146,12 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="two-factor-code" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Authenticator code <span className="font-normal text-neutral-500">(if enabled)</span></label>
+              <input id="two-factor-code" name="twoFactorCode" type="text" inputMode="numeric" autoComplete="one-time-code" value={twoFactorCode} onChange={(event) => setTwoFactorCode(event.target.value)} maxLength={14} className="w-full px-4 py-3 bg-neutral-50 dark:bg-dark-700 border border-neutral-300 dark:border-dark-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-neutral-900 dark:text-white" placeholder="123456 or XXXX-XXXX-XXXX" />
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Use a recovery code if you cannot access your authenticator app.</p>
             </div>
 
             <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium">

@@ -46,3 +46,19 @@ export function encryptToken(token: string): string {
   const authTag = cipher.getAuthTag();
   return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
 }
+
+export function decryptToken(value: string): string | null {
+  try {
+    const [ivValue, authTagValue, encryptedValue] = value.split(':');
+    const key = Buffer.from(getEnv('ENCRYPTION_KEY') || '', 'hex');
+    if (key.length !== 32 || !ivValue || !authTagValue || !encryptedValue) return null;
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivValue, 'hex'));
+    decipher.setAuthTag(Buffer.from(authTagValue, 'hex'));
+    return Buffer.concat([
+      decipher.update(Buffer.from(encryptedValue, 'hex')),
+      decipher.final(),
+    ]).toString('utf8');
+  } catch {
+    return null;
+  }
+}

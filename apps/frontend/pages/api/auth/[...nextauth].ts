@@ -7,6 +7,8 @@ import { compare } from 'bcryptjs';
 import prisma from '../../../lib/prisma';
 import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
 import { getEnv } from '../../../lib/env';
+import { decryptAuthSecret } from '../../../lib/auth-tokens';
+import { consumeRecoveryCode, verifyTotp } from '../../../lib/two-factor';
 
 const nextAuthSecret = getEnv('NEXTAUTH_SECRET');
 const nextAuthUrl = getEnv('NEXTAUTH_URL');
@@ -21,6 +23,7 @@ const providers = [
     credentials: {
       email: { label: 'Email', type: 'email' },
       password: { label: 'Password', type: 'password' },
+      twoFactorCode: { label: 'Authenticator code', type: 'text' },
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) {
@@ -34,6 +37,18 @@ const providers = [
       const isPasswordValid = await compare(credentials.password, user.passwordHash);
       if (!isPasswordValid) throw new Error('Invalid credentials');
       if (!user.emailVerified) throw new Error('Please verify your email before logging in');
+
+      if (user.twoFactorEnabled) {
+        const secret = user.twoFactorSecret ? decryptAuthSecret(user.twoFactorSecret) : null;
+        const validTotp = secret ? await verifyTotp(secret, credentials.twoFactorCode) : false;
+        const recovery = validTotp
+          ? { valid: false, remaining: [] as string[] }
+          : await consumeRecoveryCode(credentials.twoFactorCode, user.twoFactorRecoveryCodes);
+        if (!validTotp && !recovery.valid) throw new Error('Invalid credentials');
+        if (recovery.valid) {
+          await prisma.user.update({ where: { id: user.id }, data: { twoFactorRecoveryCodes: recovery.remaining } });
+        }
+      }
 
       await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
       return { id: user.id, email: user.email, name: user.name, plan: user.plan };

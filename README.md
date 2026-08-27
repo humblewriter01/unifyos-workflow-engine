@@ -8,7 +8,7 @@ The application includes a unified inbox, workflow management, an integration ca
 
 ## Technology
 
-The frontend is a Next.js 14 application with TypeScript, React, Tailwind CSS, and NextAuth.js. Authentication data is stored in PostgreSQL through Prisma. Dashboard and integration-token data uses the optional Supabase service. Production deployment is configured for Render using the Next.js standalone server.
+The frontend is a Next.js 14 application with TypeScript, React, Tailwind CSS, and NextAuth.js. Authentication, user-owned workflows, and encrypted integration tokens are stored in PostgreSQL through Prisma. Supabase is optional dashboard data only. Production deployment is configured for Render using the Next.js standalone server.
 
 ## Local setup
 
@@ -58,10 +58,11 @@ The following services are optional. If they are omitted, the application still 
 
 | Service | Variables | Behavior when omitted |
 | --- | --- | --- |
-| Supabase dashboard data | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Apps, workflows, notifications, and analytics remain loadable with empty-state responses |
+| Supabase dashboard data | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional supplemental dashboard data remains loadable with empty-state responses |
 | Email and support | `RESEND_API_KEY`, `SUPPORT_EMAIL` | Credentials login remains available; verification, password reset, and support delivery report that email is not configured |
 | OAuth token storage | `ENCRYPTION_KEY` | Provider connection is disabled until a 32-byte hexadecimal key is supplied |
 | Email verification | `REQUIRE_EMAIL_VERIFICATION=true`, `RESEND_API_KEY` | When false or omitted, credentials accounts can sign in without email delivery; when true, verification is enforced |
+| Authenticator-app 2FA | No extra environment variable; requires `NEXTAUTH_SECRET` and `DATABASE_URL` | Users can set up TOTP, receive one-time recovery codes, and use either a TOTP or recovery code at login |
 
 ## Activating integrations later
 
@@ -70,15 +71,23 @@ Add the complete credential set for a provider to Render, redeploy, and confirm 
 | Integration | Environment variables |
 | --- | --- |
 | Google Gmail and Calendar | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ENCRYPTION_KEY` |
-| Slack | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `ENCRYPTION_KEY` |
-| Notion | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Slack | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `ENCRYPTION_KEY` (`SLACK_SIGNING_SECRET` for Events API) |
+| Notion | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET`, `NOTION_REDIRECT_URI`, `ENCRYPTION_KEY` |
 | Asana | `ASANA_CLIENT_ID`, `ASANA_CLIENT_SECRET`, `ENCRYPTION_KEY` |
 | Monday.com | `MONDAY_CLIENT_ID`, `MONDAY_CLIENT_SECRET`, `ENCRYPTION_KEY` |
 | HubSpot | `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, `ENCRYPTION_KEY` |
 | Salesforce | `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `ENCRYPTION_KEY` |
 | Trello | `TRELLO_API_KEY`, `TRELLO_API_SECRET` |
 
-Configured providers with implemented OAuth endpoints use the connection flow under `/api/apps/:id/connect` and `/api/apps/:id/callback`. Trello is kept in the catalog for later activation but still requires its provider-specific OAuth exchange to be added before it can connect.
+Configured providers with implemented OAuth endpoints use the connection flow under `/api/apps/:id/connect` and `/api/apps/:id/callback`. Slack supports channel discovery, message posting, and signed Events API acknowledgements. Notion supports workspace search and page creation; the parent page or database is supplied by the user rather than hardcoded. The exact Notion redirect URI must be registered in the Notion developer portal and set as `NOTION_REDIRECT_URI`. Trello remains in the catalog for later activation but still requires its provider-specific OAuth exchange before it can connect.
+
+## Integration API routes
+
+After a user connects a provider, server-side actions include `GET /api/integrations/slack/channels`, `POST /api/integrations/slack/message`, `POST /api/integrations/notion/search`, and `POST /api/integrations/notion/pages`. Provider tokens are decrypted only on the server and are never returned in API responses. Configure Slack’s Events API Request URL as `https://your-app.onrender.com/api/integrations/slack/events`; Slack requests are accepted only when the signing secret and timestamp signature are valid.
+
+## Two-factor authentication
+
+Users can enable authenticator-app 2FA from **Settings → Security**. Setup generates a QR code and manual key, activation requires a valid six-digit TOTP, and recovery codes are displayed only once. Login accepts a current TOTP or a one-time recovery code. Disabling 2FA requires a current TOTP or recovery code. TOTP secrets are encrypted with `NEXTAUTH_SECRET`, and recovery codes are stored as bcrypt hashes.
 
 ## Verification commands
 

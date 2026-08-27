@@ -4,6 +4,7 @@ import { authOptions } from '../../auth/[...nextauth]';
 import prisma from '../../../../lib/prisma';
 import { getAppBaseUrl, getIntegrationStatus } from '../../../../lib/integrations';
 import { encryptToken, verifyOAuthState } from '../../../../lib/oauth';
+import { getEnv } from '../../../../lib/env';
 
 type TokenResponse = {
   access_token?: string;
@@ -20,11 +21,13 @@ function formBody(values: Record<string, string>) {
 
 async function exchangeCode(appId: string, code: string, redirectUri: string): Promise<TokenResponse> {
   if (appId === 'notion') {
-    const credentials = Buffer.from(`${process.env.NOTION_CLIENT_ID}:${process.env.NOTION_CLIENT_SECRET}`).toString('base64');
+    const credentials = Buffer.from(`${getEnv('NOTION_CLIENT_ID')}:${getEnv('NOTION_CLIENT_SECRET')}`).toString('base64');
     const response = await fetch('https://api.notion.com/v1/oauth/token', {
       method: 'POST',
       headers: {
         Authorization: `Basic ${credentials}`,
+        Accept: 'application/json',
+        'Notion-Version': '2026-03-11',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
@@ -36,8 +39,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     slack: {
       url: 'https://slack.com/api/oauth.v2.access',
       values: {
-        client_id: process.env.SLACK_CLIENT_ID!,
-        client_secret: process.env.SLACK_CLIENT_SECRET!,
+        client_id: getEnv('SLACK_CLIENT_ID')!,
+        client_secret: getEnv('SLACK_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
       },
@@ -45,8 +48,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     gmail: {
       url: 'https://oauth2.googleapis.com/token',
       values: {
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        client_id: getEnv('GOOGLE_CLIENT_ID')!,
+        client_secret: getEnv('GOOGLE_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
@@ -55,8 +58,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     calendar: {
       url: 'https://oauth2.googleapis.com/token',
       values: {
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        client_id: getEnv('GOOGLE_CLIENT_ID')!,
+        client_secret: getEnv('GOOGLE_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
@@ -65,8 +68,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     asana: {
       url: 'https://app.asana.com/-/oauth_token',
       values: {
-        client_id: process.env.ASANA_CLIENT_ID!,
-        client_secret: process.env.ASANA_CLIENT_SECRET!,
+        client_id: getEnv('ASANA_CLIENT_ID')!,
+        client_secret: getEnv('ASANA_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
@@ -75,8 +78,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     monday: {
       url: 'https://auth.monday.com/oauth2/token',
       values: {
-        client_id: process.env.MONDAY_CLIENT_ID!,
-        client_secret: process.env.MONDAY_CLIENT_SECRET!,
+        client_id: getEnv('MONDAY_CLIENT_ID')!,
+        client_secret: getEnv('MONDAY_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
@@ -85,8 +88,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     hubspot: {
       url: 'https://api.hubapi.com/oauth/v1/token',
       values: {
-        client_id: process.env.HUBSPOT_CLIENT_ID!,
-        client_secret: process.env.HUBSPOT_CLIENT_SECRET!,
+        client_id: getEnv('HUBSPOT_CLIENT_ID')!,
+        client_secret: getEnv('HUBSPOT_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
@@ -95,8 +98,8 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
     salesforce: {
       url: 'https://login.salesforce.com/services/oauth2/token',
       values: {
-        client_id: process.env.SALESFORCE_CLIENT_ID!,
-        client_secret: process.env.SALESFORCE_CLIENT_SECRET!,
+        client_id: getEnv('SALESFORCE_CLIENT_ID')!,
+        client_secret: getEnv('SALESFORCE_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
@@ -147,7 +150,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const redirectUri = `${getAppBaseUrl()}/api/apps/${appId}/callback`;
+    const redirectUri = appId === 'notion'
+      ? getEnv('NOTION_REDIRECT_URI') || `${getAppBaseUrl()}/api/apps/notion/callback`
+      : `${getAppBaseUrl()}/api/apps/${appId}/callback`;
     const token = await exchangeCode(appId, code, redirectUri);
     const accessToken = token.access_token;
     if (!accessToken) throw new Error('Provider did not return an access token');
