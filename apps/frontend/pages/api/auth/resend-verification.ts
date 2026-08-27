@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '../../../lib/prisma';
 import { createAuthToken } from '../../../lib/auth-tokens';
 import { sendVerificationEmail } from '../../../lib/email';
+import { isEmailConfigured } from '../../../lib/env';
 import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   if (!EMAIL_PATTERN.test(email)) return res.status(400).json({ success: false, error: 'Enter a valid email address.' });
-  if (!process.env.RESEND_API_KEY) {
+  if (!isEmailConfigured()) {
     return res.status(503).json({ success: false, error: 'Email verification is not configured yet.', code: 'EMAIL_NOT_CONFIGURED' });
   }
 

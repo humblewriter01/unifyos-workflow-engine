@@ -1,3 +1,5 @@
+import { getEnv } from './env';
+
 export type IntegrationId =
   | 'slack'
   | 'gmail'
@@ -68,7 +70,7 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
   },
 ];
 
-const hasValue = (key: string) => Boolean(process.env[key]?.trim());
+const hasValue = (key: string) => Boolean(getEnv(key));
 
 export function getIntegrationStatus(id: string): IntegrationStatus | undefined {
   const definition = INTEGRATIONS.find((integration) => integration.id === id);
@@ -88,8 +90,8 @@ export function getAllIntegrationStatuses(): IntegrationStatus[] {
 
 export function getAppBaseUrl(): string {
   return (
-    process.env.NEXTAUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    `http://localhost:${process.env.PORT || '3000'}`
+    getEnv('NEXTAUTH_URL') ||
+    getEnv('NEXT_PUBLIC_APP_URL') ||
+    `http://localhost:${getEnv('PORT') || '3000'}`
   ).replace(/\/$/, '');
 }

@@ -10,7 +10,7 @@
     "dev": "cd apps/frontend && npm run dev",
     "build": "npm run prisma:generate && cd apps/frontend && npm run build",
     "prisma:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate deploy --schema apps/api/prisma/schema.prisma",
+    "prisma:migrate": "node scripts/prisma-migrate.js",
     "start": "cd apps/frontend && npm start",
     "docker:dev": "docker-compose up --build"
   },

@@ -1,14 +1,17 @@
 import { PrismaClient } from '@prisma/client';
+import { getEnv } from './env';
 
 // PrismaClient singleton for Next.js
 // Prevents multiple instances in development due to hot-reloading
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
+const databaseUrl = getEnv('DATABASE_URL');
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    ...(databaseUrl ? { datasources: { db: { url: databaseUrl } } } : {}),
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 

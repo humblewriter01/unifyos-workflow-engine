@@ -1,4 +1,8 @@
 import { withAuth } from 'next-auth/middleware';
+import { getEnv } from './lib/env';
+
+const nextAuthSecret = getEnv('NEXTAUTH_SECRET');
+if (nextAuthSecret) process.env.NEXTAUTH_SECRET = nextAuthSecret;
 
 export default withAuth({
   pages: { signIn: '/auth/login' },

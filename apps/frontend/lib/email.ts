@@ -1,6 +1,7 @@
 // apps/frontend/lib/email.ts
 import { getAppBaseUrl } from './integrations';
 import { supabase } from './supabase';
+import { getEnv, isEmailConfigured } from './env';
 
 // Email templates
 const emailTemplates = {
@@ -74,18 +75,18 @@ const emailTemplates = {
 // Main email sending function using Resend.com
 export async function sendEmail(to: string, subject: string, html: string, metadata?: any) {
   try {
-    if (!process.env.RESEND_API_KEY) {
+        const resendApiKey = getEnv('RESEND_API_KEY', ['RESENDER_API_KEY']);
+    if (!resendApiKey) {
       throw new Error('RESEND_API_KEY is not configured');
     }
-
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || 'UnifyOS <onboarding@resend.dev>',
+        from: getEnv('EMAIL_FROM') || 'UnifyOS <onboarding@resend.dev>',
         to,
         subject,
         html,

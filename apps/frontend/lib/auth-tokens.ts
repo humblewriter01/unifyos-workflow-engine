@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getEnv } from './env';
 
 type AuthTokenPayload = {
   purpose: 'email_verification' | 'password_reset';
@@ -7,7 +8,7 @@ type AuthTokenPayload = {
 };
 
 function getSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET?.trim();
+  const secret = getEnv('NEXTAUTH_SECRET');
   if (!secret) throw new Error('NEXTAUTH_SECRET is required for authentication tokens');
   return secret;
 }

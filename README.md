@@ -19,7 +19,7 @@ npm ci
 npm run build
 ```
 
-Copy `.env.example` to the environment file used by your local process and set the core authentication values. `DATABASE_URL`, `NEXTAUTH_URL`, and `NEXTAUTH_SECRET` are core settings. Supabase, Resend, and provider credentials are optional.
+Copy `.env.example` to the environment file used by your local process and set the core authentication values. `DATABASE_URL`, `NEXTAUTH_URL`, and `NEXTAUTH_SECRET` are core settings. Supabase, Resend, and provider credentials are optional. For Render with Supabase, set `DATABASE_URL` to the Supabase **Session pooler** URI from Connect, using the `aws-*.pooler.supabase.com` host and port `5432`; the direct `db.<project-ref>.supabase.co:5432` endpoint can be IPv6-only.
 
 To run the application locally after building:
 
@@ -37,6 +37,7 @@ The checked-in `render.yaml` performs the following steps from the repository ro
 npm ci
 npm run build
 copy Next.js standalone static assets
+run `npm run prisma:migrate` as the pre-deploy command
 start apps/frontend/.next/standalone/apps/frontend/server.js
 ```
 
@@ -88,7 +89,7 @@ npm run prisma:generate
 npm run prisma:migrate
 ```
 
-Apply `npm run prisma:migrate` only after `DATABASE_URL` points to the intended database. Render runs the same command automatically as its pre-deploy step.
+Apply `npm run prisma:migrate` only after `DATABASE_URL` points to the intended database. Render runs the same command automatically as its pre-deploy step. `/api/health` now returns HTTP 503 with `database: "unavailable"` when the configured database cannot be reached, which makes the deployment failure visible instead of reporting a false healthy state.
 
 For a running local server, verify:
 

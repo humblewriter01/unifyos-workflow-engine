@@ -1,9 +1,10 @@
 import crypto from 'crypto';
+import { getEnv } from './env';
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 function getSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET?.trim();
+  const secret = getEnv('NEXTAUTH_SECRET');
   if (!secret) throw new Error('NEXTAUTH_SECRET is required for OAuth state signing');
   return secret;
 }
@@ -34,7 +35,7 @@ export function verifyOAuthState(state: string, expectedAppId: string, expectedU
 }
 
 export function encryptToken(token: string): string {
-  const key = Buffer.from(process.env.ENCRYPTION_KEY || '', 'hex');
+  const key = Buffer.from(getEnv('ENCRYPTION_KEY') || '', 'hex');
   if (key.length !== 32) {
     throw new Error('ENCRYPTION_KEY must be exactly 32 bytes encoded as 64 hexadecimal characters');
   }

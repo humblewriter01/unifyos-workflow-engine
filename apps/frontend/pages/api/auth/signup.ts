@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '../../../lib/prisma';
 import { createAuthToken } from '../../../lib/auth-tokens';
 import { sendVerificationEmail } from '../../../lib/email';
+import { isEmailConfigured } from '../../../lib/env';
 import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (password.length < 8 || password.length > 128) {
     return res.status(400).json({ success: false, error: 'Password must be between 8 and 128 characters.' });
   }
-  if (requireVerification && !process.env.RESEND_API_KEY) {
+  if (requireVerification && !isEmailConfigured()) {
     return res.status(503).json({
       success: false,
       error: 'Email verification was enabled but RESEND_API_KEY is missing.',

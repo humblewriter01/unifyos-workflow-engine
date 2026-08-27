@@ -1,5 +1,6 @@
 // apps/frontend/lib/support-email.ts
-// SIMPLE VERSION - Uses environment variable
+// Server-side support email delivery.
+import { getEnv } from './env';
 
 export async function sendSupportEmail(
   name: string,
@@ -11,13 +12,14 @@ export async function sendSupportEmail(
 ) {
   try {
     // Get support email from environment variable
-    const supportEmail = process.env.SUPPORT_EMAIL;
+    const supportEmail = getEnv('SUPPORT_EMAIL');
+    const resendApiKey = getEnv('RESEND_API_KEY', ['RESENDER_API_KEY']);
     
     if (!supportEmail) {
       throw new Error('SUPPORT_EMAIL environment variable is not set');
     }
 
-    if (!process.env.RESEND_API_KEY) {
+    if (!resendApiKey) {
       throw new Error('RESEND_API_KEY is not configured');
     }
 
@@ -25,7 +27,7 @@ export async function sendSupportEmail(
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

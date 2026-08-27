@@ -2,6 +2,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
+import { getEnv, isEmailConfigured } from '../../../lib/env';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -9,7 +10,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  if (!process.env.RESEND_API_KEY || !process.env.SUPPORT_EMAIL) {
+  const resendApiKey = getEnv('RESEND_API_KEY', ['RESENDER_API_KEY']);
+  const supportEmail = getEnv('SUPPORT_EMAIL');
+  if (!isEmailConfigured() || !supportEmail) {
     return res.status(503).json({
       success: false,
       error: 'Support email is not configured yet.',
@@ -31,12 +34,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supportResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         from: 'UnifyOS Support <support@unifyos.com>',
-        to: [process.env.SUPPORT_EMAIL], // ← Using environment variable
+        to: [supportEmail],
         subject: `[UnifyOS Support] ${category}: ${subject}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -97,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

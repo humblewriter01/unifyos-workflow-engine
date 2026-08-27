@@ -6,6 +6,14 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import prisma from '../../../lib/prisma';
 import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
+import { getEnv } from '../../../lib/env';
+
+const nextAuthSecret = getEnv('NEXTAUTH_SECRET');
+const nextAuthUrl = getEnv('NEXTAUTH_URL');
+const googleClientId = getEnv('GOOGLE_CLIENT_ID');
+const googleClientSecret = getEnv('GOOGLE_CLIENT_SECRET');
+if (nextAuthSecret) process.env.NEXTAUTH_SECRET = nextAuthSecret;
+if (nextAuthUrl) process.env.NEXTAUTH_URL = nextAuthUrl;
 
 const providers = [
   CredentialsProvider({
@@ -19,7 +27,8 @@ const providers = [
         throw new Error('Invalid credentials');
       }
 
-      const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+      const email = credentials.email.trim().toLowerCase();
+      const user = await prisma.user.findUnique({ where: { email } });
       if (!user || !user.passwordHash) throw new Error('Invalid credentials');
 
       const isPasswordValid = await compare(credentials.password, user.passwordHash);
@@ -30,11 +39,11 @@ const providers = [
       return { id: user.id, email: user.email, name: user.name, plan: user.plan };
     },
   }),
-  ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  ...(googleClientId && googleClientSecret
     ? [
         GoogleProvider({
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
           authorization: {
             params: {
               prompt: 'consent',
@@ -51,7 +60,7 @@ const providers = [
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: providers as NextAuthOptions['providers'],
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: nextAuthSecret,
 
   session: {
     strategy: 'jwt',
@@ -148,7 +157,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  debug: process.env.NODE_ENV === 'development',
+  debug: getEnv('NODE_ENV') === 'development',
 };
 
 const nextAuthHandler = NextAuth(authOptions);
