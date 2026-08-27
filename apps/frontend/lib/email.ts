@@ -149,7 +149,7 @@ export async function sendEmail(to: string, subject: string, html: string, metad
 
 // Specific email functions
 export async function sendVerificationEmail(email: string, userId: string) {
-  const verificationLink = `${getAppBaseUrl()}/api/auth/verify-email?token=${userId}`;
+  const verificationLink = `${getAppBaseUrl()}/auth/verify-email?token=${encodeURIComponent(userId)}`;
   
   return sendEmail(
     email,
@@ -160,7 +160,7 @@ export async function sendVerificationEmail(email: string, userId: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, resetToken: string) {
-  const resetLink = `${getAppBaseUrl()}/auth/reset-password?token=${resetToken}`;
+  const resetLink = `${getAppBaseUrl()}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
   
   return sendEmail(
     email,

@@ -40,7 +40,7 @@ copy Next.js standalone static assets
 start apps/frontend/.next/standalone/apps/frontend/server.js
 ```
 
-The build script generates the Prisma client before compiling Next.js. Render uses `/api/health` as its health check. Do not use `next start` with the standalone output because Next.js reports that combination as unsupported.
+The build script generates the Prisma client before compiling Next.js, and the pre-deploy command applies the checked-in Prisma migration for password and NextAuth session tables. Render uses `/api/health` as its health check. Do not use `next start` with the standalone output because Next.js reports that combination as unsupported.
 
 ## Environment configuration
 
@@ -58,8 +58,9 @@ The following services are optional. If they are omitted, the application still 
 | Service | Variables | Behavior when omitted |
 | --- | --- | --- |
 | Supabase dashboard data | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Apps, workflows, notifications, and analytics remain loadable with empty-state responses |
-| Email and support | `RESEND_API_KEY`, `SUPPORT_EMAIL` | Email sign-in, verification, password reset, and support delivery report that email is not configured |
+| Email and support | `RESEND_API_KEY`, `SUPPORT_EMAIL` | Credentials login remains available; verification, password reset, and support delivery report that email is not configured |
 | OAuth token storage | `ENCRYPTION_KEY` | Provider connection is disabled until a 32-byte hexadecimal key is supplied |
+| Email verification | `REQUIRE_EMAIL_VERIFICATION=true`, `RESEND_API_KEY` | When false or omitted, credentials accounts can sign in without email delivery; when true, verification is enforced |
 
 ## Activating integrations later
 
@@ -84,7 +85,10 @@ Configured providers with implemented OAuth endpoints use the connection flow un
 npm ci
 npm run build
 npm run prisma:generate
+npm run prisma:migrate
 ```
+
+Apply `npm run prisma:migrate` only after `DATABASE_URL` points to the intended database. Render runs the same command automatically as its pre-deploy step.
 
 For a running local server, verify:
 

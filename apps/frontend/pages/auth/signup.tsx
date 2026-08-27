@@ -64,8 +64,13 @@ export default function SignUpPage() {
         throw new Error(data.error || 'Failed to create account');
       }
 
-      setSuccess(true);
-      setTimeout(() => router.push('/auth/verify-email'), 2000);
+      if (data.verificationRequired) {
+        localStorage.setItem('unifyos_verification_email', formData.email.trim().toLowerCase());
+        setSuccess(true);
+        setTimeout(() => router.push(`/auth/verify-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`), 1200);
+      } else {
+        await router.push('/auth/login?registered=1');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {

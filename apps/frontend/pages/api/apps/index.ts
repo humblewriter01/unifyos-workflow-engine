@@ -1,4 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { getIntegrationStatus } from '../../../lib/integrations';
 import { supabase } from '../../../lib/supabase';
 
@@ -44,8 +46,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const { data: session } = await supabase.auth.getSession();
-    const userId = session?.session?.user?.id;
+    const session = await getServerSession(req, res, authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       const apps = getCatalogApps();

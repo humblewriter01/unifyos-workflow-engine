@@ -1,4 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { supabase } from '../../../lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -23,11 +25,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { data: session } = await supabase.auth.getSession();
-    const userId = session?.session?.user?.id;
+    const session = await getServerSession(req, res, authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
-      return res.status(200).json({ success: true, data: [], meta: { total: 0, unread: 0 } });
+      if (req.method === 'GET') {
+        return res.status(200).json({ success: true, data: [], meta: { total: 0, unread: 0 } });
+      }
+      return res.status(401).json({ success: false, error: 'Sign in before creating a notification.' });
     }
 
     if (req.method === 'GET') {

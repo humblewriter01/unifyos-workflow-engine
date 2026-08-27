@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Menu, Bell, Search, Settings, User, ChevronDown, Moon, Sun } from 'lucide-react';
+import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
+import { Menu, Bell, Search, Settings, User, ChevronDown, Moon, Sun, LogOut } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
@@ -10,6 +12,7 @@ interface HeaderProps {
 
 export default function Header({ onMobileMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -76,24 +79,28 @@ export default function Header({ onMobileMenuClick }: HeaderProps) {
           </button>
 
           {/* Settings */}
-          <button 
+          <Link
+            href="/settings/account"
             className="hidden md:block p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" />
-          </button>
+          </Link>
 
-          {/* User Menu - SIMPLIFIED */}
-          <div className="flex items-center pl-2 border-l border-gray-200 dark:border-gray-700">
-            <button className="flex items-center space-x-2 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors group">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
-              </div>
-              <div className="hidden lg:block text-left">
-                <div className="text-sm font-medium text-gray-900 dark:text-white">User</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Free Plan</div>
-              </div>
-              <ChevronDown className="hidden lg:block w-4 h-4 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+          {/* Authenticated user controls */}
+          <div className="flex items-center pl-2 border-l border-gray-200 dark:border-gray-700 gap-2">
+            <div className="hidden lg:block text-right">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">{session?.user?.name || session?.user?.email || 'Account'}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{session?.user?.plan || 'FREE'} Plan</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void signOut({ callbackUrl: '/auth/login' })}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>

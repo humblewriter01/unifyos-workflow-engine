@@ -2,10 +2,10 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
-import EmailProvider from 'next-auth/providers/email';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import prisma from '../../../lib/prisma';
+import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
 
 const providers = [
   CredentialsProvider({
@@ -30,40 +30,6 @@ const providers = [
       return { id: user.id, email: user.email, name: user.name, plan: user.plan };
     },
   }),
-  ...(process.env.RESEND_API_KEY
-    ? [
-        EmailProvider({
-          server: {
-            host: process.env.EMAIL_SERVER_HOST || 'smtp.resend.com',
-            port: parseInt(process.env.EMAIL_SERVER_PORT || '587', 10),
-            auth: {
-              user: process.env.EMAIL_SERVER_USER || 'resend',
-              pass: process.env.EMAIL_SERVER_PASSWORD || process.env.RESEND_API_KEY,
-            },
-          },
-          from: process.env.EMAIL_FROM || 'UnifyOS <onboarding@resend.dev>',
-          sendVerificationRequest: async ({ identifier, url, provider }) => {
-            const response = await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                from: provider.from,
-                to: identifier,
-                subject: 'Sign in to UnifyOS',
-                html: `<p>Click <a href="${url}">here</a> to sign in to UnifyOS.</p>`,
-              }),
-            });
-            if (!response.ok) {
-              const error = await response.json().catch(() => ({}));
-              throw new Error(`Resend error: ${error.message || response.statusText}`);
-            }
-          },
-        }),
-      ]
-    : []),
   ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
     ? [
         GoogleProvider({
@@ -185,4 +151,17 @@ export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === 'development',
 };
 
-export default NextAuth(authOptions);
+const nextAuthHandler = NextAuth(authOptions);
+
+export default async function handler(req: any, res: any) {
+  const segments = Array.isArray(req.query?.nextauth) ? req.query.nextauth : [];
+  const isCredentialsCallback = req.method === 'POST' && segments[0] === 'callback';
+  if (isCredentialsCallback) {
+    const rate = checkRateLimit(`login:${getRequestIp(req)}`, 10, 15 * 60 * 1000);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many sign-in attempts. Please try again later.' });
+    }
+  }
+  return nextAuthHandler(req, res);
+}

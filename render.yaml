@@ -7,6 +7,7 @@ services:
       mkdir -p apps/frontend/.next/standalone/apps/frontend/.next &&
       cp -R apps/frontend/.next/static apps/frontend/.next/standalone/apps/frontend/.next/static &&
       if [ -d apps/frontend/public ]; then cp -R apps/frontend/public apps/frontend/.next/standalone/apps/frontend/public; fi
+    preDeployCommand: npm run prisma:migrate
     startCommand: node apps/frontend/.next/standalone/apps/frontend/server.js
     healthCheckPath: /api/health
     envVars:
