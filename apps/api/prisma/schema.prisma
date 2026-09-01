@@ -8,18 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  email         String    @unique
-  name          String?
-  passwordHash  String?   @map("password_hash") @db.Text
-  plan          UserPlan  @default(FREE)
-  emailVerified Boolean   @default(false) @map("email_verified")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  lastLoginAt          DateTime? @map("last_login_at")
-  twoFactorEnabled     Boolean   @default(false) @map("two_factor_enabled")
-  twoFactorSecret      String?   @map("two_factor_secret") @db.Text
-  twoFactorRecoveryCodes Json?   @map("two_factor_recovery_codes")
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  name                 String?
+  passwordHash         String?   @db.Text
+  plan                 UserPlan  @default(FREE)
+  emailVerified        Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  lastLoginAt          DateTime?
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?   @db.Text
+  twoFactorRecoveryCodes Json?
 
   accounts      Account[]
   sessions      Session[]
@@ -28,23 +28,21 @@ model User {
   appTokens     AppToken[]
 
   @@index([email])
-  @@map("users")
+  @@map("User")
 }
 
 enum UserPlan {
   FREE
   PRO
   BUSINESS
-
-  @@map("user_plan")
 }
 
 model Account {
-  id                String  @id @default(uuid()) @db.Uuid
-  userId            String  @map("user_id") @db.Uuid
+  id                String  @id @default(uuid())
+  userId            String
   type              String
   provider          String
-  providerAccountId String  @map("provider_account_id")
+  providerAccountId String
   refreshToken      String? @map("refresh_token") @db.Text
   accessToken       String? @map("access_token") @db.Text
   expiresAt         Int?    @map("expires_at")
@@ -56,75 +54,75 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
-  @@map("accounts")
+  @@map("Account")
 }
 
 model Session {
-  id           String   @id @default(uuid()) @db.Uuid
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id") @db.Uuid
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@map("sessions")
+  @@map("Session")
 }
 
 model AppToken {
-  id           String   @id @default(uuid()) @db.Uuid
-  userId       String   @map("user_id") @db.Uuid
-  appName      String   @map("app_name")
-  accessToken  String   @map("access_token") @db.Text
-  refreshToken String?  @map("refresh_token") @db.Text
-  expiresAt    DateTime? @map("expires_at")
+  id           String    @id @default(uuid())
+  userId       String
+  appName      String
+  accessToken  String    @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime?
   scope        String?
   metadata     Json?
-  connected    Boolean  @default(true)
-  lastUsedAt   DateTime? @map("last_used_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  connected    Boolean   @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, appName])
   @@index([userId])
   @@index([appName])
-  @@map("app_tokens")
+  @@map("AppToken")
 }
 
 model Workflow {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
+  id             String   @id @default(uuid())
+  userId         String
   name           String
   description    String?
-  triggerApp     String   @map("trigger_app")
-  triggerEvent   String   @map("trigger_event")
-  triggerConfig  Json     @map("trigger_config")
+  triggerApp     String
+  triggerEvent   String
+  triggerConfig  Json
   actions        Json
   enabled        Boolean  @default(true)
-  executionCount Int      @default(0) @map("execution_count")
-  lastExecutedAt DateTime? @map("last_executed_at")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  executionCount Int      @default(0)
+  lastExecutedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   executions WorkflowExecution[]
 
   @@index([userId])
   @@index([enabled])
-  @@map("workflows")
+  @@map("Workflow")
 }
 
 model WorkflowExecution {
-  id           String          @id @default(uuid()) @db.Uuid
-  workflowId   String          @map("workflow_id") @db.Uuid
+  id           String          @id @default(uuid())
+  workflowId   String
   status       ExecutionStatus
-  triggerData  Json            @map("trigger_data")
+  triggerData  Json
   results      Json?
   error        String?         @db.Text
-  startedAt    DateTime        @default(now()) @map("started_at")
-  completedAt  DateTime?       @map("completed_at")
+  startedAt    DateTime        @default(now())
+  completedAt  DateTime?
   duration     Int?
 
   workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
@@ -132,7 +130,7 @@ model WorkflowExecution {
   @@index([workflowId])
   @@index([status])
   @@index([startedAt])
-  @@map("workflow_executions")
+  @@map("WorkflowExecution")
 }
 
 enum ExecutionStatus {
@@ -141,60 +139,56 @@ enum ExecutionStatus {
   SUCCESS
   FAILED
   CANCELLED
-
-  @@map("execution_status")
 }
 
 model Notification {
-  id         String               @id @default(uuid()) @db.Uuid
-  userId     String               @map("user_id") @db.Uuid
-  appName    String               @map("app_name")
-  appIcon    String?              @map("app_icon")
+  id         String               @id @default(uuid())
+  userId     String
+  appName    String
+  appIcon    String?
   title      String
   message    String               @db.Text
   priority   NotificationPriority @default(MEDIUM)
   read       Boolean              @default(false)
   metadata   Json?
-  externalId String?              @map("external_id")
-  createdAt  DateTime             @default(now()) @map("created_at")
+  externalId String?
+  createdAt  DateTime             @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
   @@index([createdAt])
-  @@map("notifications")
+  @@map("Notification")
 }
 
 enum NotificationPriority {
   LOW
   MEDIUM
   HIGH
-
-  @@map("notification_priority")
 }
 
 model UsageMetric {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  metricType String   @map("metric_type")
+  id         String   @id @default(uuid())
+  userId     String
+  metricType String
   value      Float
   date       DateTime @default(now())
 
   @@index([userId, metricType, date])
-  @@map("usage_metrics")
+  @@map("UsageMetric")
 }
 
 model AuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id        String   @id @default(uuid())
+  userId    String
   action    String
   resource  String?
   metadata  Json?
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  createdAt DateTime @default(now()) @map("created_at")
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([action])
-  @@map("audit_logs")
+  @@map("AuditLog")
 }
