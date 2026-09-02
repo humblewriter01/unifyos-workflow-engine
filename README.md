@@ -113,3 +113,39 @@ curl http://localhost:3000/api/notifications
 ## License
 
 This project is licensed under the MIT License.
+
+## Billing and administration
+
+UnifyOS now includes two production-oriented vertical slices: a server-authorized administrator catalog and a Paystack-backed customer billing flow. Billing routes never accept a client-supplied plan as an entitlement grant. Plans are published server-side, checkout is initialized with the Paystack secret on the server, and access is recorded only after server-side verification of provider status, amount, currency, and reference. Paystack webhook requests are validated with the raw-body `x-paystack-signature` HMAC-SHA512 signature, deduplicated by provider/event identity, persisted before processing, and return an acknowledgement without exposing provider credentials. Paystack’s current guidance requires server-side initialization and verification, and recommends webhook-driven fulfillment rather than trusting browser redirects [1] [2].
+
+The administrator catalog is available at `/admin` and is gated by the database-backed `User.adminRole` plus mandatory `twoFactorEnabled`. Catalog plans begin in `DRAFT`; transitions require a reason, and publishing requires `SUPER_ADMIN`. Every catalog mutation is recorded in `AuditLog`. The customer billing area is available at `/billing`, with published prices, current subscription state, payment history, and a secure checkout redirect.
+
+Apply the billing/admin migration explicitly against the intended database:
+
+```bash
+npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+```
+
+The migration is `apps/api/prisma/migrations/20260902090000_billing_admin/migration.sql`. Do not run destructive schema changes from application boot. On the current Render free service, pre-deploy commands are not executed, so apply migrations through a controlled release process or move migrations to a paid deployment topology.
+
+### Billing environment variables
+
+Set `PAYSTACK_SECRET_KEY` only on the server. Set the Paystack dashboard webhook URL to `https://<public-origin>/api/billing/webhook`. Configure `NEXTAUTH_URL` to the exact public origin. The public UI receives only checkout authorization data; it must never receive `PAYSTACK_SECRET_KEY`, database credentials, service-role keys, OAuth client secrets, or raw payment payloads.
+
+The current implementation deliberately fails closed when Paystack is not configured. It does not claim that recurring subscriptions, refunds, disputes, reconciliation jobs, asynchronous workers, or automated invoice delivery are fully operational until those components are separately deployed and tested against Paystack test mode. Payment, legal, tax, PCI, privacy, and consumer-protection requirements must be reviewed for each target market before live charges.
+
+[1]: https://paystack.com/docs/payments/accept-payments/ "Paystack — Accept Payments"
+[2]: https://paystack.com/docs/payments/webhooks/ "Paystack — Webhooks"
+
+### Administrator bootstrap
+
+The billing/admin migration defaults every account to `NONE`. After creating and verifying the administrator account and enabling authenticator-app MFA, assign the least-privilege role through a controlled database migration or SQL console—not through the browser:
+
+```sql
+UPDATE "User"
+SET "adminRole" = 'SUPER_ADMIN'
+WHERE lower("email") = lower('admin@example.com')
+  AND "twoFactorEnabled" = true;
+```
+
+Replace the example address with the approved administrator identity, review the affected row count, and record the change through the organization’s change-management process. Prefer `CATALOG_ADMIN`, `BILLING_ADMIN`, or `SUPPORT_READONLY` over `SUPER_ADMIN` when the narrower role is sufficient.

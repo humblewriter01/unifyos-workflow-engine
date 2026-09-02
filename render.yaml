@@ -27,6 +27,10 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: BILLING_ENABLED
+        value: "false"
       - key: EMAIL_FROM
         sync: false
       - key: SUPPORT_EMAIL

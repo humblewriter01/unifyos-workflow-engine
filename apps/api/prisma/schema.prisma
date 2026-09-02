@@ -13,6 +13,7 @@ model User {
   name                 String?
   passwordHash         String?   @db.Text
   plan                 UserPlan  @default(FREE)
+  adminRole            AdminRole @default(NONE)
   emailVerified        Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -25,7 +26,10 @@ model User {
   sessions      Session[]
   workflows     Workflow[]
   notifications Notification[]
-  appTokens     AppToken[]
+  appTokens       AppToken[]
+  billingCustomer BillingCustomer?
+  subscriptions   Subscription[]
+  payments        Payment[]
 
   @@index([email])
   @@map("User")
@@ -165,6 +169,183 @@ enum NotificationPriority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum AdminRole {
+  NONE
+  SUPPORT_READONLY
+  BILLING_ADMIN
+  CATALOG_ADMIN
+  SUPER_ADMIN
+}
+
+enum PlanStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  DEPRECATED
+  ARCHIVED
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+  ONE_TIME
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  ACTIVE
+  PAST_DUE
+  GRACE_PERIOD
+  CANCELLED
+  REFUNDED
+  DISPUTED
+  SUSPENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUND_PENDING
+  REFUNDED
+  DISPUTED
+}
+
+enum ProviderEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+model BillingPlan {
+  id          String     @id @default(uuid())
+  key         String     @unique
+  name        String
+  description String?
+  status      PlanStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  prices      BillingPrice[]
+  entitlements PlanEntitlement[]
+  subscriptions Subscription[]
+  @@index([status, updatedAt])
+  @@map("BillingPlan")
+}
+
+model BillingPrice {
+  id          String         @id @default(uuid())
+  planId      String
+  version     Int
+  amount      Int
+  currency    String
+  interval    BillingInterval
+  trialDays   Int            @default(0)
+  effectiveAt DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  plan        BillingPlan    @relation(fields: [planId], references: [id], onDelete: Restrict)
+  @@unique([planId, version])
+  @@index([currency, interval, effectiveAt])
+  @@map("BillingPrice")
+}
+
+model FeatureDefinition {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  entitlements PlanEntitlement[]
+  @@map("FeatureDefinition")
+}
+
+model PlanEntitlement {
+  id        String           @id @default(uuid())
+  planId    String
+  featureId String
+  limit     Int?
+  metadata  Json?
+  plan      BillingPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature   FeatureDefinition @relation(fields: [featureId], references: [id], onDelete: Restrict)
+  @@unique([planId, featureId])
+  @@map("PlanEntitlement")
+}
+
+model BillingCustomer {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  providerCustomerCode  String?
+  email                 String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([providerCustomerCode])
+  @@map("BillingCustomer")
+}
+
+model Subscription {
+  id                       String             @id @default(uuid())
+  userId                   String
+  planId                   String
+  provider                 String
+  providerSubscriptionCode String?
+  status                   SubscriptionStatus @default(INCOMPLETE)
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd        Boolean            @default(false)
+  canceledAt               DateTime?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  plan                     BillingPlan        @relation(fields: [planId], references: [id], onDelete: Restrict)
+  payments                 Payment[]
+  @@unique([provider, providerSubscriptionCode])
+  @@index([userId, status, currentPeriodEnd])
+  @@map("Subscription")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  userId                String
+  subscriptionId        String?
+  provider              String
+  reference             String        @unique
+  providerTransactionId String?
+  amount                Int
+  currency              String
+  status                PaymentStatus @default(PENDING)
+  metadata              Json?
+  verifiedAt            DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  subscription          Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  @@unique([provider, providerTransactionId])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("Payment")
+}
+
+model ProviderEvent {
+  id          String             @id @default(uuid())
+  provider    String
+  eventId     String
+  eventType   String
+  payload     Json
+  status      ProviderEventStatus @default(RECEIVED)
+  processedAt DateTime?
+  error       String?            @db.Text
+  createdAt   DateTime           @default(now())
+  @@unique([provider, eventId])
+  @@index([provider, eventType, createdAt])
+  @@map("ProviderEvent")
 }
 
 model UsageMetric {

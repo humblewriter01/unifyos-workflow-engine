@@ -51,7 +51,7 @@ const providers = [
       }
 
       await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-      return { id: user.id, email: user.email, name: user.name, plan: user.plan };
+      return { id: user.id, email: user.email, name: user.name, plan: user.plan, adminRole: user.adminRole };
     },
   }),
   ...(googleClientId && googleClientSecret
@@ -95,6 +95,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.plan = user.plan;
+        token.adminRole = user.adminRole;
       }
 
       // Store OAuth tokens if available
@@ -109,6 +110,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.plan = token.plan as string;
+        session.user.adminRole = token.adminRole as string;
       }
       return session;
     },
