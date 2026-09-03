@@ -10,22 +10,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ success: false, error: `Method ${req.method} Not Allowed` });
   }
 
-  let database: 'operational' | 'unavailable' | 'not_configured' = 'not_configured';
-  if (getEnv('DATABASE_URL')) {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      database = 'operational';
-    } catch (error) {
-      console.warn('Health check database unavailable:', error instanceof Error ? error.message : error);
-      database = 'unavailable';
+  const deep = req.query.deep === '1' || req.query.deep === 'true';
+  let database: 'operational' | 'unavailable' | 'not_configured' | 'unchecked' = 'unchecked';
+  if (deep) {
+    database = 'not_configured';
+    if (getEnv('DATABASE_URL')) {
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        database = 'operational';
+      } catch (error) {
+        console.warn('Deep health database check failed:', error instanceof Error ? error.message : error);
+        database = 'unavailable';
+      }
     }
   }
 
   const integrations = getAllIntegrationStatuses();
-  const healthy = database === 'operational';
+  const healthy = !deep || database === 'operational';
   return res.status(healthy ? 200 : 503).json({
     success: healthy,
-    status: healthy ? 'healthy' : 'degraded',
+    status: deep ? (healthy ? 'healthy' : 'degraded') : 'live',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     services: {

@@ -98,7 +98,7 @@ npm run prisma:generate
 npm run prisma:migrate
 ```
 
-Apply `npm run prisma:migrate` only after `DATABASE_URL` points to the intended database. Render runs the same command automatically as its pre-deploy step. `/api/health` now returns HTTP 503 with `database: "unavailable"` when the configured database cannot be reached, which makes the deployment failure visible instead of reporting a false healthy state.
+Apply `npm run prisma:migrate` only after `DATABASE_URL` points to the intended database. Render runs the same command automatically as its pre-deploy step. `/api/health?deep=1` returns HTTP 503 with `database: "unavailable"` when the configured database cannot be reached. The default `/api/health` endpoint is a liveness check for Render and returns the API process state without blocking the web service on a deep database probe.
 
 For a running local server, verify:
 
