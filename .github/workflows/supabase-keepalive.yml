@@ -1,0 +1,30 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    # Run daily so the Free-plan project receives regular API/database activity.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Supabase REST endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${SUPABASE_URL:?Set the SUPABASE_URL repository secret}"
+          : "${SUPABASE_ANON_KEY:?Set the SUPABASE_ANON_KEY repository secret}"
+          curl --fail-with-body --silent --show-error --retry 4 --retry-delay 10 \
+            --header "apikey: ${SUPABASE_ANON_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            --url "${SUPABASE_URL%/}/rest/v1/" \
+            --output /dev/null
+          echo "Supabase heartbeat completed successfully."
