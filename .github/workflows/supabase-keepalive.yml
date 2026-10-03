@@ -16,15 +16,15 @@ jobs:
       - name: Ping Supabase REST endpoint
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
           : "${SUPABASE_URL:?Set the SUPABASE_URL repository secret}"
-          : "${SUPABASE_ANON_KEY:?Set the SUPABASE_ANON_KEY repository secret}"
+          : "${SUPABASE_PUBLISHABLE_KEY:?Set the SUPABASE_PUBLISHABLE_KEY repository secret}"
           curl --fail-with-body --silent --show-error --retry 4 --retry-delay 10 \
-            --header "apikey: ${SUPABASE_ANON_KEY}" \
-            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            --url "${SUPABASE_URL%/}/rest/v1/" \
+            --header "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_PUBLISHABLE_KEY}" \
+            --url "${SUPABASE_URL%/}/rest/v1/users?select=id&limit=1" \
             --output /dev/null
           echo "Supabase heartbeat completed successfully."
