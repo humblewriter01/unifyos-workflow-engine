@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/router';
-import { LayoutDashboard, Inbox, Zap, Link2, TrendingUp, CreditCard, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Inbox, Zap, Link2, TrendingUp, CreditCard } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -10,7 +10,6 @@ const navigation = [
   { name: 'Connections', href: '/apps', icon: Link2 },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp },
   { name: 'Billing', href: '/billing', icon: CreditCard },
-  { name: 'Administration', href: '/admin', icon: ShieldCheck },
 ];
 
 interface SidebarProps {
