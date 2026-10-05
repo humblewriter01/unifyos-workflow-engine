@@ -33,22 +33,22 @@ export default function Header({ onMobileMenuClick }: HeaderProps) {
           </button>
 
           {/* Search Bar - Desktop */}
-          <div className="hidden md:flex items-center relative">
+          <div className="flex items-center relative">
             <Search className="absolute left-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search..."
-              className="w-80 pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
+              className="w-10 sm:w-48 md:w-80 pl-10 pr-2 sm:pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-transparent sm:text-gray-900 dark:text-transparent sm:dark:text-white placeholder-transparent sm:placeholder-gray-500 dark:sm:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
             />
           </div>
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* App Connection Status - SIMPLIFIED */}
-          <div className="hidden sm:flex items-center px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
+          <div className="flex items-center px-2 sm:px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors" title="Integration status" aria-label="Integration status">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-gray-400 dark:bg-gray-600 rounded-full"></div>
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <span className="hidden sm:inline text-sm font-medium text-gray-600 dark:text-gray-400">
                 No apps
               </span>
             </div>
@@ -81,7 +81,7 @@ export default function Header({ onMobileMenuClick }: HeaderProps) {
           {/* Settings */}
           <Link
             href="/settings/account"
-            className="hidden md:block p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" />
