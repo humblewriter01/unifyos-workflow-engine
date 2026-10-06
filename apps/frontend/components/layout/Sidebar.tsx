@@ -107,7 +107,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                 Need help?
               </div>
               <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Check our <a href="#" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">documentation</a>
+                Check our <a href="/contact" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">support center</a>
               </div>
             </div>
           </div>

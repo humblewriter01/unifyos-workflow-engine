@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { CheckCircle, Inbox as InboxIcon, Loader2 } from 'lucide-react';
 import { api, Notification } from '../lib/api';
 
 export default function UnifiedInbox() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function UnifiedInbox() {
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
           Notifications from your connected apps will appear here
         </p>
-        <button className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
+        <button onClick={() => void router.push('/apps')} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
           Connect an app to get started →
         </button>
       </div>
@@ -158,8 +160,8 @@ export default function UnifiedInbox() {
       {/* Load More */}
       {notifications.length >= 10 && (
         <div className="text-center pt-4">
-          <button className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
-            Load more notifications
+          <button onClick={loadNotifications} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
+            Refresh notifications
           </button>
         </div>
       )}

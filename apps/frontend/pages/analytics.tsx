@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { TrendingUp, Clock, Zap, Link2, Activity, Calendar, BarChart3 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { api, AnalyticsData } from '../lib/api';
@@ -61,9 +62,9 @@ export default function AnalyticsPage() {
       <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
         Connect apps and create workflows to start seeing analytics about your automation
       </p>
-      <button className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors font-medium">
+      <Link href="/apps" className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors font-medium inline-flex">
         Get Started
-      </button>
+      </Link>
     </div>
   );
 

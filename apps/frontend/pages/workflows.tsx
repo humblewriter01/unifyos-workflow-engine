@@ -47,7 +47,7 @@ export default function WorkflowsPage() {
         </div>
 
         {/* Content */}
-        {view === 'list' ? <WorkflowsList /> : <WorkflowBuilder />}
+        {view === 'list' ? <WorkflowsList onCreate={() => setView('builder')} /> : <WorkflowBuilder />}
       </div>
     </DashboardLayout>
   );

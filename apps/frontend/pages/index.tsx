@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Link2, Zap, Clock, TrendingUp, Activity, AlertCircle, ArrowRight } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { api, AnalyticsData, Notification } from '../lib/api';
@@ -75,10 +76,10 @@ export default function Home() {
       <p className="text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
         Connect your first app to start automating your workflow and centralizing your notifications
       </p>
-      <button className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors font-medium inline-flex items-center space-x-2">
+      <Link href="/apps" className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors font-medium inline-flex items-center space-x-2">
         <Link2 className="w-4 h-4" />
         <span>Connect Your First App</span>
-      </button>
+      </Link>
       
       <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
         <div className="p-4 bg-neutral-50 dark:bg-dark-800 rounded-lg border border-neutral-200 dark:border-dark-700">

@@ -222,7 +222,7 @@ export default function AppConnections() {
               {/* Action Buttons */}
               {app.connected ? (
                 <div className="flex items-center space-x-2">
-                  <button className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-neutral-50 dark:bg-dark-700 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-600 transition-colors text-sm font-medium border border-neutral-200 dark:border-dark-600">
+                  <button onClick={() => handleConnect(app)} className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-neutral-50 dark:bg-dark-700 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-600 transition-colors text-sm font-medium border border-neutral-200 dark:border-dark-600">
                     <Settings2 className="w-4 h-4" />
                     <span>Settings</span>
                   </button>

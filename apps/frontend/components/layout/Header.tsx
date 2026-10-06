@@ -71,12 +71,13 @@ export default function Header({ onMobileMenuClick }: HeaderProps) {
           )}
 
           {/* Notifications - SIMPLIFIED */}
-          <button 
+          <Link
+            href="/inbox"
             className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
-          </button>
+          </Link>
 
           {/* Settings */}
           <Link

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Play, Pause, Trash2, ArrowRight, Clock, Zap, AlertCircle } from 'lucide-react';
 import { api, Workflow } from '../lib/api';
 
-export default function WorkflowsList() {
+export default function WorkflowsList({ onCreate }: { onCreate?: () => void }) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export default function WorkflowsList() {
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
           Create your first workflow to automate tasks between apps
         </p>
-        <button className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white rounded-lg transition-colors font-medium">
+        <button onClick={onCreate} className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white rounded-lg transition-colors font-medium">
           Create Workflow
         </button>
       </div>

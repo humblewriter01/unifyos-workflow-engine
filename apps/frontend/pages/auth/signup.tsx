@@ -236,13 +236,13 @@ export default function SignUpPage() {
               />
               <span className="text-sm text-neutral-600 dark:text-neutral-400">
                 I agree to the{' '}
-                <a href="#" className="text-primary-600 dark:text-primary-400 hover:underline">
+                <Link href="/terms" className="text-primary-600 dark:text-primary-400 hover:underline">
                   Terms of Service
-                </a>{' '}
+                </Link>{' '}
                 and{' '}
-                <a href="#" className="text-primary-600 dark:text-primary-400 hover:underline">
+                <Link href="/privacy" className="text-primary-600 dark:text-primary-400 hover:underline">
                   Privacy Policy
-                </a>
+                </Link>
               </span>
             </label>
 
