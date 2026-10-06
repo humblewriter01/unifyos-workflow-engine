@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Mail, MessageSquare, Calendar, FileText, Trello, Play, Save, Plus, X, ArrowRight, Zap } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { AlertCircle, CheckCircle2, Loader2, Mail, MessageSquare, Calendar, FileText, Trello, Play, Save, Plus, X, ArrowRight, Zap } from 'lucide-react';
 
 interface Trigger {
   id: string;
@@ -21,6 +21,9 @@ interface Workflow {
   trigger: Trigger | null;
   actions: Action[];
 }
+
+type ExecutionStepStatus = 'pending' | 'running' | 'success' | 'error';
+type ExecutionStep = { id: string; label: string; detail: string; status: ExecutionStepStatus };
 
 const iconMap: Record<string, any> = {
   Gmail: Mail,
@@ -53,6 +56,8 @@ export default function WorkflowBuilder() {
   const [showTriggerMenu, setShowTriggerMenu] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [execution, setExecution] = useState<{ status: 'running' | 'success' | 'error'; steps: ExecutionStep[] } | null>(null);
+  const executionId = useRef(0);
 
   const handleSelectTrigger = (trigger: Trigger) => {
     setWorkflow({ ...workflow, trigger });
@@ -119,15 +124,39 @@ export default function WorkflowBuilder() {
 
   const handleTestWorkflow = async () => {
     if (!workflow.trigger || workflow.actions.length === 0) {
-      alert('Please add at least one trigger and one action');
+      setExecution({
+        status: 'error',
+        steps: [{ id: 'validation', label: 'Validate workflow', detail: 'Add a trigger and at least one action before testing.', status: 'error' }],
+      });
       return;
     }
-    
-    alert('Testing workflow... Check console for details');
-    console.log('Workflow test:', {
-      trigger: workflow.trigger,
-      actions: workflow.actions,
-    });
+
+    const currentExecutionId = ++executionId.current;
+    const steps: ExecutionStep[] = [
+      { id: 'validate', label: 'Validate workflow', detail: 'Checking trigger and action configuration', status: 'pending' },
+      { id: 'trigger', label: `Simulate ${workflow.trigger.app} trigger`, detail: workflow.trigger.event, status: 'pending' },
+      ...workflow.actions.map((action, index) => ({
+        id: `action-${index}`,
+        label: `Run action ${index + 1}: ${action.app}`,
+        detail: action.task,
+        status: 'pending' as ExecutionStepStatus,
+      })),
+      { id: 'complete', label: 'Complete test run', detail: 'No external changes were sent in preview mode', status: 'pending' },
+    ];
+
+    setExecution({ status: 'running', steps });
+    console.info('Workflow test execution started', { trigger: workflow.trigger, actions: workflow.actions });
+
+    const pause = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
+    for (let index = 0; index < steps.length; index += 1) {
+      if (executionId.current !== currentExecutionId) return;
+      setExecution((current) => current ? { ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, status: 'running' } : step) } : current);
+      await pause(650);
+      if (executionId.current !== currentExecutionId) return;
+      setExecution((current) => current ? { ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, status: 'success' } : step) } : current);
+    }
+    setExecution((current) => current ? { ...current, status: 'success' } : current);
+    console.info('Workflow test execution completed successfully');
   };
 
   return (
@@ -364,6 +393,36 @@ export default function WorkflowBuilder() {
           </div>
         </div>
       </div>
+
+      {execution && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="workflow-execution-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-dark-800">
+            <div className="flex items-start justify-between border-b border-neutral-200 p-5 dark:border-dark-700">
+              <div>
+                <div className="flex items-center gap-2">
+                  {execution.status === 'running' ? <Loader2 className="h-5 w-5 animate-spin text-primary-600" /> : execution.status === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertCircle className="h-5 w-5 text-red-600" />}
+                  <h3 id="workflow-execution-title" className="text-lg font-semibold text-neutral-900 dark:text-white">{execution.status === 'running' ? 'Testing workflow' : execution.status === 'success' ? 'Test completed' : 'Test could not start'}</h3>
+                </div>
+                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">Live execution preview · no external changes are sent</p>
+              </div>
+              <button type="button" onClick={() => { executionId.current += 1; setExecution(null); }} className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-dark-700 dark:hover:text-neutral-200" aria-label="Close execution modal">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3 p-5">
+              {execution.steps.map((step) => (
+                <div key={step.id} className={`flex items-start gap-3 rounded-lg border p-3 ${step.status === 'running' ? 'border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20' : step.status === 'success' ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20' : step.status === 'error' ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20' : 'border-neutral-200 bg-neutral-50 dark:border-dark-700 dark:bg-dark-700/50'}`}>
+                  {step.status === 'running' ? <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-primary-600" /> : step.status === 'success' ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" /> : step.status === 'error' ? <AlertCircle className="mt-0.5 h-4 w-4 text-red-600" /> : <div className="mt-1 h-3 w-3 rounded-full border-2 border-neutral-300 dark:border-dark-500" />}
+                  <div className="min-w-0"><p className="text-sm font-medium text-neutral-900 dark:text-white">{step.label}</p><p className="text-xs text-neutral-600 dark:text-neutral-400">{step.detail}</p></div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end border-t border-neutral-200 p-5 dark:border-dark-700">
+              <button type="button" onClick={() => { executionId.current += 1; setExecution(null); }} disabled={execution.status === 'running'} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50">{execution.status === 'running' ? 'Running…' : 'Done'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
