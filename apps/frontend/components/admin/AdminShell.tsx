@@ -23,7 +23,11 @@ const TABS = [
   { href: '/admin/health', label: 'Integration health' },
   { href: '/admin/workflows', label: 'Workflows' },
   { href: '/admin/users', label: 'Users' },
+  { href: '/admin/support', label: 'Support' },
   { href: '/admin/plans', label: 'Plans' },
+  { href: '/admin/promo-codes', label: 'Promo codes' },
+  { href: '/admin/announcements', label: 'Announcements' },
+  { href: '/admin/email', label: 'Email blast' },
   { href: '/admin/audit', label: 'Audit log' },
 ];
 

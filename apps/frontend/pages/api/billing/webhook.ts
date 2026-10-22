@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyWebhookSignature } from '../../../lib/paystack';
 import prisma from '../../../lib/prisma';
+import { redeemPromoCode } from '../../../lib/promo-codes';
 
 export const config = { api: { bodyParser: false } };
 
@@ -42,6 +43,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const payment = await prisma.payment.findUnique({ where: { reference } });
         if (payment && Number(data.amount) === payment.amount && data.currency === payment.currency) {
           await prisma.payment.update({ where: { id: payment.id }, data: { status: 'SUCCESS', providerTransactionId: data.id ? String(data.id) : undefined, verifiedAt: new Date() } });
+          // Redeem here too: Paystack's webhook can arrive before the browser
+          // returns to /billing, and `redeemPromoCode` is idempotent per user.
+          const metadata = (payment.metadata && typeof payment.metadata === 'object' ? payment.metadata : {}) as { promoCode?: unknown };
+          if (typeof metadata.promoCode === 'string' && metadata.promoCode) {
+            await redeemPromoCode(metadata.promoCode, payment.userId).catch(() => false);
+          }
         }
       }
       if (reference && eventType.startsWith('refund.')) {
