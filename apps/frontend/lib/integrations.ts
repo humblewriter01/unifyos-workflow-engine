@@ -88,10 +88,9 @@ export function getAllIntegrationStatuses(): IntegrationStatus[] {
   return INTEGRATIONS.map((integration) => getIntegrationStatus(integration.id)!);
 }
 
-export function getAppBaseUrl(): string {
-  return (
-    getEnv('NEXTAUTH_URL') ||
-    getEnv('NEXT_PUBLIC_APP_URL') ||
-    `http://localhost:${getEnv('PORT') || '3000'}`
-  ).replace(/\/$/, '');
-}
+/**
+ * Re-exported from `lib/app-url` so integration callbacks and NextAuth share
+ * exactly one definition of the application's public origin. Pass the current
+ * request to prefer the origin the callback actually arrived on.
+ */
+export { getAppBaseUrl, getOAuthCallbackUrl } from './app-url';

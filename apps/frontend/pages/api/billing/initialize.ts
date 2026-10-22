@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import prisma from '../../../lib/prisma';
 import { getEnv } from '../../../lib/env';
+import { getAppBaseUrl } from '../../../lib/app-url';
 import { initializeTransaction } from '../../../lib/paystack';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -37,7 +38,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: { userId, provider: 'paystack', reference, amount: price.amount, currency: price.currency, metadata: { priceId, planId: price.planId } },
     });
 
-    const baseUrl = getEnv('NEXTAUTH_URL') || 'http://localhost:3000';
+    // Derive from the current request so Paystack returns the customer to the
+    // origin they are actually using. A stale NEXTAUTH_URL (or a missing value
+    // on Vercel) previously sent paying customers to http://localhost:3000.
+    const baseUrl = getAppBaseUrl(req);
     const provider = await initializeTransaction({
       email: user.email,
       amount: price.amount,

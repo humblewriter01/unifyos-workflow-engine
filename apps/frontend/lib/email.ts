@@ -50,7 +50,7 @@ const emailTemplates = {
   
   welcome: {
     subject: 'Welcome to UnifyOS!',
-    html: (userName: string) => `
+    html: (userName: string, dashboardUrl: string) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h1 style="color: #2563eb;">Welcome to UnifyOS, ${userName}! 🎉</h1>
         <p>Your account is now ready. Start automating your workflows today.</p>
@@ -62,7 +62,7 @@ const emailTemplates = {
             <li>Invite your team members</li>
           </ul>
         </div>
-        <a href="https://unifyos-platform.onrender.com/dashboard" 
+        <a href="${dashboardUrl}" 
            style="background-color: #2563eb; color: white; padding: 12px 24px; 
                   text-decoration: none; border-radius: 6px; display: inline-block;">
           Go to Dashboard
@@ -172,10 +172,13 @@ export async function sendPasswordResetEmail(email: string, resetToken: string) 
 }
 
 export async function sendWelcomeEmail(email: string, userName: string) {
+  // Resolved per environment (production domain, preview URL, or localhost)
+  // instead of a hardcoded host that only existed on the old Render setup.
+  const dashboardUrl = `${getAppBaseUrl()}/`;
   return sendEmail(
     email,
     emailTemplates.welcome.subject,
-    emailTemplates.welcome.html(userName),
+    emailTemplates.welcome.html(userName, dashboardUrl),
     { type: 'welcome', userName }
   );
 }

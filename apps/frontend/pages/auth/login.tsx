@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -10,10 +10,38 @@ function getSafeCallbackUrl(value: string | string[] | undefined): string {
   return candidate;
 }
 
+/** Error codes NextAuth can append to `?error=` after a provider round-trip. */
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  Configuration: 'Google sign-in is not configured correctly on the server. Please contact support.',
+  OAuthSignin: 'Could not start Google sign-in. Please try again.',
+  OAuthCallback: 'Google sign-in could not be completed. Please try again.',
+  OAuthCreateAccount: 'Could not create your account with Google. Please try signing up with email instead.',
+  OAuthAccountNotLinked:
+    'This email is already registered with a password. Sign in with your password, then connect Google from Settings.',
+  AccessDenied: 'Sign-in was cancelled or this account is not allowed.',
+  Verification: 'That sign-in link has expired. Please request a new one.',
+  CredentialsSignin: 'Invalid email or password, or your email has not been verified.',
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const { status } = useSession();
   const callbackUrl = useMemo(() => getSafeCallbackUrl(router.query.callbackUrl), [router.query.callbackUrl]);
+
+  /**
+   * NextAuth validates the post-sign-in target against the origin it resolves
+   * server-side. Sending an absolute URL built from `window.location.origin`
+   * means localhost stays on localhost and the Vercel domain stays on Vercel,
+   * with no hardcoded host anywhere.
+   */
+  const getAbsoluteCallbackUrl = useCallback(() => {
+    if (typeof window === 'undefined') return callbackUrl;
+    try {
+      return new URL(callbackUrl, window.location.origin).toString();
+    } catch {
+      return callbackUrl;
+    }
+  }, [callbackUrl]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -27,6 +55,13 @@ export default function LoginPage() {
       void router.replace(callbackUrl);
     }
   }, [callbackUrl, router, status]);
+
+  // Surface a provider error that sent the user back to this page.
+  useEffect(() => {
+    const authError = router.query.error;
+    if (typeof authError !== 'string' || !authError) return;
+    setError(AUTH_ERROR_MESSAGES[authError] ?? 'Sign-in failed. Please try again.');
+  }, [router.query.error]);
 
   useEffect(() => {
     let active = true;
@@ -64,7 +99,7 @@ export default function LoginPage() {
         password,
         twoFactorCode: twoFactorCode.trim(),
         redirect: false,
-        callbackUrl,
+        callbackUrl: getAbsoluteCallbackUrl(),
       });
 
       if (!result || result.error) {
@@ -88,7 +123,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await signIn('google', { callbackUrl });
+      // `redirect: true` (the default) sends the browser to Google and back to
+      // `<origin>/api/auth/callback/google`; the origin is resolved live above.
+      await signIn('google', { callbackUrl: getAbsoluteCallbackUrl() });
     } catch (signInError) {
       console.error('Google login error:', signInError);
       setError('Google sign-in is currently unavailable.');

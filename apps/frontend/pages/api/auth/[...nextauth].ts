@@ -2,20 +2,40 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import prisma from '../../../lib/prisma';
+import { unifyosPrismaAdapter } from '../../../lib/auth-adapter';
 import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
 import { getEnv } from '../../../lib/env';
+import { getConfiguredAppUrl } from '../../../lib/app-url';
 import { decryptAuthSecret } from '../../../lib/auth-tokens';
 import { consumeRecoveryCode, verifyTotp } from '../../../lib/two-factor';
 
 const nextAuthSecret = getEnv('NEXTAUTH_SECRET');
-const nextAuthUrl = getEnv('NEXTAUTH_URL');
+
+/**
+ * next-auth 4.24.x returns `NEXTAUTH_URL` verbatim as the origin when it is set,
+ * *before* it looks at the Vercel/Render host headers. A `NEXTAUTH_URL` left at
+ * `http://localhost:3000` therefore makes Google receive a localhost
+ * `redirect_uri` in production. `getConfiguredAppUrl()` ignores localhost on a
+ * hosted platform and falls back to the platform's public URL.
+ */
+const nextAuthUrl = getConfiguredAppUrl();
 const googleClientId = getEnv('GOOGLE_CLIENT_ID');
 const googleClientSecret = getEnv('GOOGLE_CLIENT_SECRET');
+// Opt-in: link a Google identity to an existing password account that has the
+// same, Google-verified email address. Off by default because it lets the
+// provider decide account ownership.
+const allowGoogleEmailLinking = getEnv('AUTH_ALLOW_GOOGLE_EMAIL_LINKING') === 'true';
 if (nextAuthSecret) process.env.NEXTAUTH_SECRET = nextAuthSecret;
-if (nextAuthUrl) process.env.NEXTAUTH_URL = nextAuthUrl;
+if (nextAuthUrl) {
+  process.env.NEXTAUTH_URL = nextAuthUrl;
+} else if (process.env.NEXTAUTH_URL) {
+  // Localhost on a hosted deployment: drop it so next-auth falls back to the
+  // request host instead of building localhost callback URLs.
+  console.warn('[auth] Ignoring a localhost NEXTAUTH_URL on a hosted deployment.');
+  delete process.env.NEXTAUTH_URL;
+}
 
 const providers = [
   CredentialsProvider({
@@ -59,11 +79,16 @@ const providers = [
         GoogleProvider({
           clientId: googleClientId,
           clientSecret: googleClientSecret,
+          // Google redirects back to `<origin>/api/auth/callback/google`.
+          // NextAuth derives that origin from the incoming request on Vercel,
+          // so no absolute URL has to be hardcoded here.
+          allowDangerousEmailAccountLinking: allowGoogleEmailLinking,
           authorization: {
             params: {
-              prompt: 'consent',
+              // `select_account` keeps multi-account users functional without
+              // re-prompting for consent on every single sign-in.
+              prompt: 'select_account',
               access_type: 'offline',
-              response_type: 'code',
               scope: 'openid email profile',
             },
           },
@@ -73,7 +98,7 @@ const providers = [
 ];
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: unifyosPrismaAdapter(prisma),
   providers: providers as NextAuthOptions['providers'],
   secret: nextAuthSecret,
 
@@ -84,10 +109,11 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: '/auth/login',
+    // Both pages exist in this app; a missing one turns every OAuth rejection
+    // into a bare 404 instead of an actionable message.
     signOut: '/auth/logout',
     error: '/auth/error',
     verifyRequest: '/auth/verify-email',
-    newUser: '/auth/welcome', // Optional welcome page
   },
 
   callbacks: {
@@ -96,6 +122,20 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.plan = user.plan;
         token.adminRole = user.adminRole;
+
+        // OAuth users come back from the adapter as a plain AdapterUser, so the
+        // app-specific fields are undefined on the first sign-in. Read them from
+        // the database instead of leaving the session without a plan.
+        if (!token.plan || !token.adminRole) {
+          const record = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { plan: true, adminRole: true },
+          });
+          if (record) {
+            token.plan = record.plan;
+            token.adminRole = record.adminRole;
+          }
+        }
       }
 
       // Store OAuth tokens if available
@@ -116,27 +156,31 @@ export const authOptions: NextAuthOptions = {
     },
 
     async signIn({ user, account, profile }) {
-      // For OAuth providers, ensure user exists and is verified
       if (account?.provider === 'google') {
+        const profileEmail = typeof profile?.email === 'string' ? profile.email : undefined;
+        const email = user.email ?? profileEmail;
+        if (!email) return false;
+
+        // IMPORTANT: never create the user here.
+        //
+        // NextAuth runs this callback *before* `callbackHandler` and then calls
+        // `adapter.createUser()` itself. Creating the row here meant the adapter
+        // found an existing user for the e-mail without a linked Account and
+        // threw `OAuthAccountNotLinked`, failing every first-time Google login.
+        // Creation now happens exactly once, through the adapter.
         const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { email },
+          select: { id: true, emailVerified: true },
         });
 
-        if (!existingUser) {
-          // Create new user from OAuth
-          await prisma.user.create({
-            data: {
-              email: user.email!,
-              name: user.name,
-              emailVerified: true,
-              plan: 'FREE',
-            },
-          });
-        } else {
-          // Update last login
+        if (existingUser) {
           await prisma.user.update({
             where: { id: existingUser.id },
-            data: { lastLoginAt: new Date() },
+            data: {
+              lastLoginAt: new Date(),
+              // Google has already verified this address.
+              ...(existingUser.emailVerified ? {} : { emailVerified: true }),
+            },
           });
         }
       }
@@ -159,7 +203,17 @@ export const authOptions: NextAuthOptions = {
 
   events: {
     async createUser({ user }) {
-      // User created via email sign-up
+      // Runs once the adapter has created the row (OAuth sign-up). The schema's
+      // `emailVerified` is a non-nullable Boolean that credentials login
+      // requires, so mark provider-verified accounts as verified here.
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true, lastLoginAt: new Date() },
+        });
+      } catch (error) {
+        console.error('Failed to finalise OAuth user record:', error);
+      }
       console.log(`New user created: ${user.email}`);
     },
     async linkAccount({ user, account }) {

@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import { getEnv, isEmailConfigured } from '../../../lib/env';
+import { getAppBaseUrl } from '../../../lib/app-url';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -10,6 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  const baseUrl = getAppBaseUrl(req);
   const resendApiKey = getEnv('RESEND_API_KEY', ['RESENDER_API_KEY']);
   const supportEmail = getEnv('SUPPORT_EMAIL');
   if (!isEmailConfigured() || !supportEmail) {
@@ -82,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             </div>
 
             <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-              <a href="https://unifyos-platform.onrender.com/admin/support" 
+              <a href="${baseUrl}/admin" 
                  style="background: #2563eb; color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-size: 14px;">
                  View in Admin Panel
               </a>
@@ -159,7 +161,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             <div style="text-align: center; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
               <p style="color: #94a3b8; font-size: 12px;">
                 UnifyOS - Automate Your Workflow<br>
-                <a href="https://unifyos-platform.onrender.com" style="color: #2563eb;">unifyos-platform.onrender.com</a>
+                <a href="${baseUrl}" style="color: #2563eb;">${baseUrl.replace(/^https?:\/\//, '')}</a>
               </p>
             </div>
           </div>
