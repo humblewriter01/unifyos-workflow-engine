@@ -97,9 +97,18 @@ const providers = [
               // Google Workspace suite (Drive, Docs, Sheets, Slides, Gmail,
               // Calendar, Forms, Tasks, Contacts).
               //
-              // `access_type=offline` + `prompt=consent` are required to receive
-              // a refresh token on every consent, which is what keeps the
-              // integrations working after the first hour.
+              // Sign-in uses `prompt=select_account`, not `prompt=consent`.
+              // Forcing consent here made every single login re-display the
+              // Google consent screen, which reads to users like a bug. The
+              // account chooser is still shown (so multi-account users can
+              // switch), but an already-granted login is silent.
+              //
+              // Refresh tokens are NOT collected at sign-in: the
+              // /settings/integrations "Connect" button posts to
+              // /api/apps/google/connect, which issues its own authorization
+              // request with `access_type=offline` + `prompt=consent`. Workspace
+              // tokens therefore always come from an explicit, informed grant,
+              // and this sign-in config never affects them.
               //
               // Note: these are sensitive/restricted scopes, so an unverified
               // OAuth client shows a "Google hasn't verified this app" warning
@@ -107,7 +116,7 @@ const providers = [
               // GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY=true to keep sign-in minimal
               // (openid email profile) and grant Workspace access only through
               // the /settings/integrations "Connect" flow instead.
-              prompt: 'consent',
+              prompt: 'select_account',
               access_type: 'offline',
               include_granted_scopes: true,
               scope: googleSignInScopes.join(' '),
