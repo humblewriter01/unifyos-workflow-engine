@@ -2,7 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]';
 import { getAppBaseUrl, getIntegrationStatus } from '../../../../lib/integrations';
-import { createOAuthState } from '../../../../lib/oauth';
+import { createOAuthState, normalizeReturnPath } from '../../../../lib/oauth';
+import { GOOGLE_FULL_SCOPES } from '../../../../lib/google-scopes';
 import { getEnv } from '../../../../lib/env';
 import prisma from '../../../../lib/prisma';
 
@@ -31,6 +32,13 @@ function oauthUrl(appId: string, state: string, req: NextApiRequest): string | u
       params.set('client_id', getEnv('SLACK_CLIENT_ID')!);
       params.set('scope', 'channels:read,chat:write,users:read');
       return `https://slack.com/oauth/v2/authorize?${params}`;
+    case 'google':
+      params.set('client_id', getEnv('GOOGLE_CLIENT_ID')!);
+      params.set('access_type', 'offline');
+      params.set('prompt', 'consent');
+      params.set('include_granted_scopes', 'true');
+      params.set('scope', GOOGLE_FULL_SCOPES.join(' '));
+      return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     case 'gmail':
     case 'calendar':
       params.set('client_id', getEnv('GOOGLE_CLIENT_ID')!);
@@ -87,7 +95,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ success: false, error: 'Sign in before connecting an integration.' });
     }
 
-    const state = createOAuthState(appId, userId);
+    // Optional relative path the callback should return to (validated, so it
+    // cannot be used as an open redirect).
+    const returnTo = normalizeReturnPath(
+      typeof req.body?.returnTo === 'string' ? req.body.returnTo : undefined,
+    );
+    const state = createOAuthState(appId, userId, returnTo ?? undefined);
     const authUrl = oauthUrl(appId, state, req);
     if (!authUrl) {
       return res.status(501).json({

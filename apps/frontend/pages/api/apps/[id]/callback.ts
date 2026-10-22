@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]';
 import prisma from '../../../../lib/prisma';
 import { getAppBaseUrl, getIntegrationStatus } from '../../../../lib/integrations';
-import { encryptToken, verifyOAuthState } from '../../../../lib/oauth';
+import { encryptToken, verifyOAuthState, getOAuthStateReturnTo } from '../../../../lib/oauth';
 import { getEnv } from '../../../../lib/env';
 
 type TokenResponse = {
@@ -43,6 +43,16 @@ async function exchangeCode(appId: string, code: string, redirectUri: string): P
         client_secret: getEnv('SLACK_CLIENT_SECRET')!,
         code,
         redirect_uri: redirectUri,
+      },
+    },
+    google: {
+      url: 'https://oauth2.googleapis.com/token',
+      values: {
+        client_id: getEnv('GOOGLE_CLIENT_ID')!,
+        client_secret: getEnv('GOOGLE_CLIENT_SECRET')!,
+        code,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
       },
     },
     gmail: {
@@ -182,9 +192,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    return res.redirect(`/apps?success=${appId}_connected`);
+    const returnTo = getOAuthStateReturnTo(state, appId, userId);
+    const successPath = returnTo ?? '/apps';
+    const separator = successPath.includes('?') ? '&' : '?';
+    return res.redirect(`${successPath}${separator}success=${appId}_connected`);
   } catch (error) {
     console.error(`[OAuth:${appId}] callback failed:`, error);
-    return res.redirect(`/apps?error=${appId}_connection_failed`);
+    const returnTo = getOAuthStateReturnTo(state, appId, userId) ?? '/apps';
+    const separator = returnTo.includes('?') ? '&' : '?';
+    return res.redirect(`${returnTo}${separator}error=${appId}_connection_failed`);
   }
 }

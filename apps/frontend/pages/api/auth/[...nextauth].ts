@@ -8,6 +8,7 @@ import { unifyosPrismaAdapter } from '../../../lib/auth-adapter';
 import { checkRateLimit, getRequestIp } from '../../../lib/rate-limit';
 import { getEnv } from '../../../lib/env';
 import { getConfiguredAppUrl } from '../../../lib/app-url';
+import { GOOGLE_FULL_SCOPES, GOOGLE_IDENTITY_SCOPES } from '../../../lib/google-scopes';
 import { decryptAuthSecret } from '../../../lib/auth-tokens';
 import { consumeRecoveryCode, verifyTotp } from '../../../lib/two-factor';
 
@@ -27,6 +28,14 @@ const googleClientSecret = getEnv('GOOGLE_CLIENT_SECRET');
 // same, Google-verified email address. Off by default because it lets the
 // provider decide account ownership.
 const allowGoogleEmailLinking = getEnv('AUTH_ALLOW_GOOGLE_EMAIL_LINKING') === 'true';
+
+/**
+ * Sign-in asks for the full Google Workspace suite by default. Flip
+ * GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY=true to request only `openid email profile`
+ * at sign-in and leave Workspace grants to the explicit Connect flow.
+ */
+const googleSignInScopes =
+  getEnv('GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY') === 'true' ? [...GOOGLE_IDENTITY_SCOPES] : GOOGLE_FULL_SCOPES;
 if (nextAuthSecret) process.env.NEXTAUTH_SECRET = nextAuthSecret;
 if (nextAuthUrl) {
   process.env.NEXTAUTH_URL = nextAuthUrl;
@@ -85,11 +94,23 @@ const providers = [
           allowDangerousEmailAccountLinking: allowGoogleEmailLinking,
           authorization: {
             params: {
-              // `select_account` keeps multi-account users functional without
-              // re-prompting for consent on every single sign-in.
-              prompt: 'select_account',
+              // Google Workspace suite (Drive, Docs, Sheets, Slides, Gmail,
+              // Calendar, Forms, Tasks, Contacts).
+              //
+              // `access_type=offline` + `prompt=consent` are required to receive
+              // a refresh token on every consent, which is what keeps the
+              // integrations working after the first hour.
+              //
+              // Note: these are sensitive/restricted scopes, so an unverified
+              // OAuth client shows a "Google hasn't verified this app" warning
+              // and is capped at 100 users until Google review completes. Set
+              // GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY=true to keep sign-in minimal
+              // (openid email profile) and grant Workspace access only through
+              // the /settings/integrations "Connect" flow instead.
+              prompt: 'consent',
               access_type: 'offline',
-              scope: 'openid email profile',
+              include_granted_scopes: true,
+              scope: googleSignInScopes.join(' '),
             },
           },
         }),
