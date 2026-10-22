@@ -176,6 +176,7 @@ Notes:
 ### 4.4 After changing env vars
 
 - [ ] Add `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in Vercel → Settings → Environment Variables (Production).
+- [ ] Confirm `GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY=true` for Production (set 2026-10-22).
 - [ ] **Redeploy** — Vercel freezes `process.env` at deploy time.
 - [ ] Sign out and back in (or use **Reconnect**) so a token with the new scopes is issued.
 
@@ -219,6 +220,24 @@ Sign-in then asks only for `openid email profile`, and Workspace permissions are
 clicks **Connect** in Settings → Integrations (that flow already exists and stores tokens in `AppToken`,
 which is exactly what the helper reads). This keeps the login path simple and lets you ship integrations
 independently.
+
+**Decision (2026-10-22): adopted for the initial launch.** `GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY=true` is
+set on the Vercel project's Production environment, so sign-in requests only `openid email profile` while
+the Connect flow requests the full Workspace scope set.
+
+### Consequences of this setting
+
+| | `=true` (current) | `=false` (full scopes at sign-in) |
+| --- | --- | --- |
+| Login prompt | Email/profile only — no unverified-app warning for the restricted scopes | Full Workspace consent incl. restricted scopes |
+| Unverified-app cap | Applies only to the Connect flow | Applies to **every login** |
+| Google verification | Needed only to ship integrations publicly | Needed just to let people sign in |
+| Token on first login | No refresh token for Workspace | Refresh token available immediately |
+| Workspace access | Requires the user to click **Connect** once | Implicit |
+
+Because sign-in no longer grants Workspace access, a user who wants Drive/Docs/etc. **must** complete
+Settings → Integrations → **Connect**. The status route and the cards' disabled "Connect first" state
+make that path explicit.
 
 ---
 
