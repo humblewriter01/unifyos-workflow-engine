@@ -1,6 +1,7 @@
 import { getEnv } from './env';
 
 export type IntegrationId =
+  | 'google'
   | 'slack'
   | 'gmail'
   | 'calendar'
@@ -23,6 +24,14 @@ export interface IntegrationStatus extends IntegrationDefinition {
 }
 
 export const INTEGRATIONS: IntegrationDefinition[] = [
+  {
+    // Unified Google Workspace connection: one consent covering Drive, Docs,
+    // Sheets, Slides, Gmail, Calendar, Forms, Tasks and Contacts, stored in a
+    // single AppToken row (appName = 'google').
+    id: 'google',
+    name: 'Google Workspace',
+    requiredEnv: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'ENCRYPTION_KEY'],
+  },
   {
     id: 'slack',
     name: 'Slack',
