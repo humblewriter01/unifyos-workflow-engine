@@ -6,6 +6,7 @@ import prisma from '../../../lib/prisma';
 import { getEnv } from '../../../lib/env';
 import { getAppBaseUrl } from '../../../lib/app-url';
 import { initializeTransaction } from '../../../lib/paystack';
+import { isPromoFailure, quotePromoCode } from '../../../lib/promo-codes';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -28,6 +29,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user || !price) return res.status(404).json({ success: false, error: { code: 'PRICE_NOT_FOUND', message: 'That price is no longer available.' } });
     if (price.amount <= 0 || !Number.isInteger(price.amount)) return res.status(409).json({ success: false, error: { code: 'PRICE_INVALID', message: 'The selected price is not payable.' } });
 
+    // A promo code changes the amount actually charged, so it is resolved here
+    // (the single source of truth) and the discounted amount is what gets
+    // stored on the payment. `verify.ts` then compares Paystack's amount with
+    // this stored, already-discounted value.
+    let promoCode: string | null = null;
+    let discountAmount = 0;
+    let amount = price.amount;
+    if (typeof req.body?.promoCode === 'string' && req.body.promoCode.trim()) {
+      const quote = await quotePromoCode({ code: req.body.promoCode, amount: price.amount, currency: price.currency, userId });
+      if (isPromoFailure(quote)) {
+        return res.status(409).json({ success: false, error: { code: quote.code, message: quote.message } });
+      }
+      promoCode = quote.quote.code;
+      discountAmount = quote.quote.discountAmount;
+      amount = quote.quote.finalAmount;
+    }
+
     await prisma.billingCustomer.upsert({
       where: { userId },
       create: { userId, email: user.email },
@@ -35,7 +53,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     const reference = `unifyos_${randomUUID().replace(/-/g, '')}`;
     const payment = await prisma.payment.create({
-      data: { userId, provider: 'paystack', reference, amount: price.amount, currency: price.currency, metadata: { priceId, planId: price.planId } },
+      data: {
+        userId,
+        provider: 'paystack',
+        reference,
+        amount,
+        currency: price.currency,
+        metadata: {
+          priceId,
+          planId: price.planId,
+          ...(promoCode ? { promoCode, discountAmount, originalAmount: price.amount } : {}),
+        },
+      },
     });
 
     // Derive from the current request so Paystack returns the customer to the
@@ -44,13 +73,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const baseUrl = getAppBaseUrl(req);
     const provider = await initializeTransaction({
       email: user.email,
-      amount: price.amount,
+      amount,
       currency: price.currency,
       reference,
       callback_url: `${baseUrl}/billing?reference=${encodeURIComponent(reference)}`,
-      metadata: { paymentId: payment.id, priceId, planId: price.planId, userId },
+      metadata: { paymentId: payment.id, priceId, planId: price.planId, userId, ...(promoCode ? { promoCode } : {}) },
     });
-    return res.status(201).json({ success: true, data: { paymentId: payment.id, reference, authorizationUrl: provider.data.authorization_url, accessCode: provider.data.access_code } });
+    return res.status(201).json({
+      success: true,
+      data: {
+        paymentId: payment.id,
+        reference,
+        authorizationUrl: provider.data.authorization_url,
+        accessCode: provider.data.access_code,
+        amount,
+        discountAmount,
+        promoCode,
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'PAYSTACK_NOT_CONFIGURED') return res.status(503).json({ success: false, error: { code: 'PAYSTACK_NOT_CONFIGURED', message: 'Payments are not configured for this environment.' } });
     return res.status(502).json({ success: false, error: { code: 'PAYMENT_INITIALIZATION_FAILED', message: 'Payment initialization failed. No access has been granted.' } });

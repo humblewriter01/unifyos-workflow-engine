@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import DashboardBanners from './DashboardBanners';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMobileMenuClick={() => setMobileMenuOpen(true)} />
+        <DashboardBanners />
         <main className="flex-1 overflow-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
