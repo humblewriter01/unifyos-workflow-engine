@@ -150,9 +150,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const redirectUri = appId === 'notion'
-      ? getEnv('NOTION_REDIRECT_URI') || `${getAppBaseUrl()}/api/apps/notion/callback`
-      : `${getAppBaseUrl()}/api/apps/${appId}/callback`;
+    // Must match the `redirect_uri` sent in the authorize request exactly,
+    // including the origin. `req` keeps this correct on Vercel deployments.
+    const redirectUri = appId === 'notion' && getEnv('NOTION_REDIRECT_URI')
+      ? getEnv('NOTION_REDIRECT_URI')!.replace(/\/+$/, '')
+      : `${getAppBaseUrl(req)}/api/apps/${appId}/callback`;
     const token = await exchangeCode(appId, code, redirectUri);
     const accessToken = token.access_token;
     if (!accessToken) throw new Error('Provider did not return an access token');

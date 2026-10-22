@@ -6,10 +6,20 @@ import { createOAuthState } from '../../../../lib/oauth';
 import { getEnv } from '../../../../lib/env';
 import prisma from '../../../../lib/prisma';
 
-function oauthUrl(appId: string, state: string): string | undefined {
-  const callback = appId === 'notion'
-    ? getEnv('NOTION_REDIRECT_URI') || `${getAppBaseUrl()}/api/apps/notion/callback`
-    : `${getAppBaseUrl()}/api/apps/${appId}/callback`;
+/**
+ * Resolves the redirect URI from the request origin so the authorize call and
+ * the token exchange (in `callback.ts`) always send the identical value.
+ */
+export function getIntegrationRedirectUri(appId: string, req: NextApiRequest): string {
+  if (appId === 'notion') {
+    const explicit = getEnv('NOTION_REDIRECT_URI');
+    if (explicit) return explicit.replace(/\/+$/, '');
+  }
+  return `${getAppBaseUrl(req)}/api/apps/${appId}/callback`;
+}
+
+function oauthUrl(appId: string, state: string, req: NextApiRequest): string | undefined {
+  const callback = getIntegrationRedirectUri(appId, req);
   const params = new URLSearchParams({
     response_type: 'code',
     redirect_uri: callback,
@@ -78,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const state = createOAuthState(appId, userId);
-    const authUrl = oauthUrl(appId, state);
+    const authUrl = oauthUrl(appId, state, req);
     if (!authUrl) {
       return res.status(501).json({
         success: false,
