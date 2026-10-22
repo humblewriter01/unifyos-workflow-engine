@@ -257,14 +257,77 @@ required the moment you switch.
 
 ---
 
-## 6. Related issues noted but **not** changed (out of scope)
+## 6. Related hardcoded-host issues — now fixed
 
-* `apps/frontend/pages/api/billing/initialize.ts` still does
-  `getEnv('NEXTAUTH_URL') || 'http://localhost:3000'` for the Paystack callback — same class of bug
-  (localhost fallback). One-line switch to `getAppBaseUrl(req)` when you want it.
-* `apps/frontend/lib/email.ts` hardcodes `https://unifyos-platform.onrender.com/dashboard` in the welcome
-  email. Should become `${getAppBaseUrl()}/`.
+* `apps/frontend/pages/api/billing/initialize.ts` — the Paystack `callback_url` used
+  `getEnv('NEXTAUTH_URL') || 'http://localhost:3000'`. **Fixed:** now `getAppBaseUrl(req)`, so a paying
+  customer is returned to the origin they are actually on.
+* `apps/frontend/lib/email.ts` — welcome email linked to
+  `https://unifyos-platform.onrender.com/dashboard`. **Fixed:** the template receives
+  `${getAppBaseUrl()}/` and resolves per environment.
+* `apps/frontend/pages/api/contact/support.ts` — same dead host in two places (the "View in Admin Panel"
+  button and the footer). **Fixed:** both now use `getAppBaseUrl(req)`.
+
+### Still outstanding
+
 * Two Slack callbacks exist (`/api/apps/slack/callback` and `/api/auth/slack/callback`). The connect flow
   uses `/api/apps/slack/callback`; the other is dead code that can be removed.
 * `apps/frontend/pages/apps.tsx` is a 10-line stub, so the integration connect UI still needs building —
   the API contract (`POST /api/apps/:id/connect` → `{ authUrl }`, then redirect) is ready.
+
+---
+
+## 7. Vercel environment audit (verified via the Vercel API)
+
+Project: **`unifyos-workflow-engine`** (`prj_bQikEREbuudJh7Fn6x0kAJFc6QjJ`), team
+`team_doQ36GvdeTLGgUo8AP0e5Pwi`
+Production domain: **`https://unifyos-workflow-engine.vercel.app`** (verified, only custom domain attached)
+Root directory: `apps/frontend` · Framework: Next.js · Install/build: `cd ../.. && npm …`
+
+| Variable | State found | Action |
+| --- | --- | --- |
+| `NEXTAUTH_URL` | `https://unifyos-workflow-engine.vercel.app` | ✅ already correct — **no localhost value present** |
+| `APP_URL` | **missing** | ➕ created (`https://unifyos-workflow-engine.vercel.app`, production) |
+| `NEXTAUTH_SECRET` | present (sensitive) | ✅ left untouched — not decrypted, since it is a secret |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://gsuipjnxshrqelmicvyo.supabase.co` | ✅ already the bare origin — no `/rest/v1`, no trailing slash |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | present | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | present (sensitive) | ✅ |
+| `DATABASE_URL` | present (sensitive), documented as the Supabase session pooler | ✅ |
+| `NOTION_REDIRECT_URI` | `…/api/apps/notion/callback` | ✅ |
+| `SLACK_CLIENT_ID` / `SECRET` / `SIGNING_SECRET` | present | ✅ |
+| `ENCRYPTION_KEY` | present (sensitive) | ✅ |
+| **`GOOGLE_CLIENT_ID`** | **absent** | ❌ **add required** |
+| **`GOOGLE_CLIENT_SECRET`** | **absent** | ❌ **add required** |
+
+### Why Google sign-in cannot work in production yet
+
+No `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` exist on the project, and there are no team-level shared
+variables either. In `[...nextauth].ts` the Google provider is only registered when **both** are present:
+
+```ts
+...(googleClientId && googleClientSecret ? [GoogleProvider({ … })] : [])
+```
+
+So on the deployed app `/api/auth/providers` returns no `google` entry, the login page's
+`googleAvailable` check fails, and the **"Continue with Google" button never renders**. Gmail and Google
+Calendar are equally unconfigured (`getIntegrationStatus` reports the two missing keys). Those two values
+can only come from your Google Cloud Console → Credentials → OAuth 2.0 Client ID; they cannot be
+generated.
+
+### Environment scoping note
+
+Every variable on this project targets **`production` only** — there are no `preview` or `development`
+values. Preview deployments (such as the one built for this branch) therefore have no `DATABASE_URL`,
+`NEXTAUTH_SECRET`, or Google credentials, and cannot exercise Google login. Note that adding a fixed
+production `APP_URL`/`NEXTAUTH_URL` to the *preview* environment would be wrong: preview OAuth callbacks
+would then bounce to the production domain. Either keep preview unscoped and test on the production
+domain, or add per-branch `git_branch`-scoped values.
+
+### Credentials for Google Cloud Console to whitelist (production value confirmed)
+
+- [ ] `https://unifyos-workflow-engine.vercel.app/api/auth/callback/google`
+- [ ] `https://unifyos-workflow-engine.vercel.app/api/apps/gmail/callback`
+- [ ] `https://unifyos-workflow-engine.vercel.app/api/apps/calendar/callback`
+- [ ] Authorized JavaScript origin: `https://unifyos-workflow-engine.vercel.app`
+
+Notion is already registered at `…/api/apps/notion/callback` and Slack at `…/api/apps/slack/callback`.
