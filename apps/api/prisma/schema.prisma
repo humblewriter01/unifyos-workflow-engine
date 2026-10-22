@@ -373,3 +373,65 @@ model AuditLog {
   @@index([action])
   @@map("AuditLog")
 }
+
+/// Admin action log — the ONLY new table used for admin auditing and for
+/// platform-wide singleton state (kill switch, announcements, support tickets).
+///
+/// Why a log doubles as a state store: the platform had no settings table and
+/// creating one was out of scope, so the newest row for a given `action` is the
+/// current value (see `lib/admin-events.ts`). Rows are append-only; only the
+/// state rows are ever mutated in place, and every mutation is itself recorded.
+///
+/// `adminId` is intentionally NOT a foreign key: audit rows must survive the
+/// deletion of the admin or the target user they reference.
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminId    String?
+  adminEmail String
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@map("admin_audit_logs")
+}
+
+/// Promo codes applied at Paystack checkout.
+///
+/// `discountValue` is either a whole percentage (1–100) for PERCENTAGE, or an
+/// integer amount in minor units for FLAT (matching Payment.amount, which is
+/// also minor units). `redeemedUserIds` enforces the per-user limit without a
+/// third table.
+model PromoCode {
+  id             String            @id @default(uuid())
+  code           String            @unique
+  description    String?
+  discountType   PromoDiscountType
+  discountValue  Int
+  currency       String?
+  maxUses        Int?
+  maxUsesPerUser Int               @default(1)
+  usedCount      Int               @default(0)
+  redeemedUserIds String[]         @default([])
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  active         Boolean           @default(true)
+  createdBy      String?
+  createdByEmail String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([active, expiresAt])
+  @@map("promo_codes")
+}
+
+enum PromoDiscountType {
+  PERCENTAGE
+  FLAT
+}
