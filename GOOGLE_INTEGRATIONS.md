@@ -173,7 +173,44 @@ Notes:
 * The requested scopes must also be on the consent screen, otherwise Google answers with
   `invalid_scope` before the redirect even happens.
 
-### 4.4 After changing env vars
+### 4.4 When Google says `Error 400: redirect_uri_mismatch`
+
+Google rejects the request **before** the app is involved, so nothing in the
+server log or the app's error page explains it: the URI in the authorize
+request is simply not byte-for-byte identical to a registered one.
+
+Print the exact strings this deployment sends:
+
+```bash
+curl -s https://unifyos-workflow-engine.vercel.app/api/diagnostics/oauth | jq .
+```
+
+The response contains:
+
+| Field | Meaning |
+| --- | --- |
+| `signIn.redirectUri` | the URI Google must accept for **Sign in with Google** |
+| `signIn.clientId` | first 20 chars of the client ID in use — confirm it is the client you edited |
+| `appConnections[].redirectUri` | the URI each **Connect** button sends |
+| `requiredRegistrations` | deduplicated list to paste into the console |
+| `config.originDrift` | `true` when users browse a host other than `APP_URL` / `NEXTAUTH_URL` |
+
+Usual causes, in order of likelihood:
+
+1. **The OAuth client was rotated and the new one has no redirect URI.** A fresh
+   *Web application* client starts with an empty list; add the production URI
+   from `requiredRegistrations`.
+2. **Wrong client.** The URI is registered on a different client than the one in
+   `GOOGLE_CLIENT_ID` — compare the prefix printed by the endpoint.
+3. **Client type is not "Web application".** Desktop/Android/iOS clients reject
+   web redirect URIs outright.
+4. **A trailing slash or `http` vs `https`.** Google compares literally.
+5. **Editing on the wrong project.** Credentials are per Google Cloud project.
+
+After saving, Google usually propagates within a minute; then retry in a fresh
+tab (a stale authorize URL is cached in history, not by the app).
+
+### 4.5 After changing env vars
 
 - [ ] Add `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in Vercel → Settings → Environment Variables (Production).
 - [ ] Confirm `GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY=true` for Production (set 2026-10-22).
