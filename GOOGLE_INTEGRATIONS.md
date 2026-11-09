@@ -212,6 +212,19 @@ for the production sign-in URI, the Workspace-Connect URI and the localhost URI:
 | `scope_invalid` | URI fine, scope not approved | add the scope to the OAuth consent screen |
 | `unreachable` | the function could not reach Google | transient; retry |
 
+The probe also runs a **control** — a deliberately invalid URI. If Google
+rejects the control but accepts the others, the verdicts are authoritative. If
+Google accepts the control too, `probeInterpretation` says `INCONCLUSIVE`:
+Google defers the `redirect_uri` check until an account is chosen, so
+`registered` only means "Google did not complain yet".
+
+When a real device still fails, open `signIn.authorizeUrl` from the same
+response **on that device**. It is byte-for-byte the request the app sends, so
+it isolates Google from the app. Then tap **error details** on Google's error
+page: it prints the `redirect_uri` Google received and the `client_id` it was
+checked against — compare both with `signIn.redirectUri` and
+`signIn.clientIdFull`.
+
 Run it right after saving the console edit. `not_registered` → the edit has not
 propagated (or landed on another client). `client_invalid` → the URI list is not
 the problem at all, the credentials are.

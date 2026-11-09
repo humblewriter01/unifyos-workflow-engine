@@ -93,8 +93,8 @@ function readableExcerpt(html: string): string {
  * No user data and no credentials are sent: the request carries only the
  * (public) client ID and a placeholder `state`.
  */
-async function probeRedirectUri(redirectUri: string, clientId: string): Promise<ProbeResult> {
-  const params = new URLSearchParams({
+function buildAuthorizeParams(redirectUri: string, clientId: string): URLSearchParams {
+  return new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
@@ -104,6 +104,10 @@ async function probeRedirectUri(redirectUri: string, clientId: string): Promise<
     include_granted_scopes: 'true',
     state: 'unifyos-diagnostic-probe',
   });
+}
+
+async function probeRedirectUri(redirectUri: string, clientId: string): Promise<ProbeResult> {
+  const params = buildAuthorizeParams(redirectUri, clientId);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
@@ -193,6 +197,27 @@ async function probeRedirectUri(redirectUri: string, clientId: string): Promise<
   }
 }
 
+/**
+ * Explains how much the probe results can be trusted.
+ *
+ * Google sometimes answers the authorize endpoint with a redirect to its
+ * sign-in page *before* it validates `redirect_uri`, and only rejects the URI
+ * once an account is chosen. The deliberately-invalid control URI detects
+ * that: if the control is waved through too, a "registered" verdict only means
+ * "Google did not complain yet".
+ */
+function interpretProbe(results: ProbeResult[]): string {
+  const control = results.find((result) => result.label === 'control (deliberately invalid)');
+  if (!control) return 'No control probe was run; verdicts are advisory.';
+  if (control.verdict === 'not_registered') {
+    return 'Google validated redirect_uri up front (the control URI was rejected), so these verdicts are authoritative.';
+  }
+  if (control.verdict === 'unreachable') {
+    return 'The control probe could not reach Google; verdicts are advisory.';
+  }
+  return `INCONCLUSIVE: Google did not reject a deliberately-invalid redirect_uri (control verdict: ${control.verdict}). It defers the check until an account is chosen, so a "registered" verdict here only means Google did not complain yet — confirm on a device with a Google session, or read the "error details" link on Google's error page.`;
+}
+
 /** Warm lambdas keep the last answer for a minute so repeats do not hit Google. */
 let probeCache: { at: number; payload: unknown } | null = null;
 const PROBE_TTL_MS = 60_000;
@@ -255,6 +280,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { label: 'sign-in (production host)', uri: signInRedirectUri },
         { label: 'Workspace Connect (production host)', uri: googleAppsCallback },
         { label: 'sign-in (localhost, dev only)', uri: 'http://localhost:3000/api/auth/callback/google' },
+        // Control: a URI that cannot possibly be registered. Google's answer to
+        // this one is what makes the other answers meaningful — if it is also
+        // waved through, Google is deferring the check and "registered" above
+        // proves nothing.
+        { label: 'control (deliberately invalid)', uri: `${signInOrigin}/__diagnostic__/not-a-registered-callback` },
       ];
       const settled = await Promise.all(targets.map((target) => probeRedirectUri(target.uri, clientId)));
       probe = settled.map((result, index) => ({ ...result, label: targets[index].label }));
@@ -273,10 +303,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         clientSecretConfigured: Boolean(getEnv('GOOGLE_CLIENT_SECRET')),
         scopes: getEnv('GOOGLE_SIGNIN_PROFILE_SCOPES_ONLY') === 'true' ? 'profile only' : 'Google Workspace suite',
         registerIn: 'Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs → Authorized redirect URIs',
+        // Open this on the device that fails. It is byte-for-byte the request
+        // the app sends; if it fails the same way, the app is not involved.
+        authorizeUrl: clientId ? `${AUTHORIZE_ENDPOINT}?${buildAuthorizeParams(signInRedirectUri, clientId).toString()}` : null,
+        clientIdFull: clientId ? `${clientId}` : null,
       },
       appConnections,
       requiredRegistrations,
       ...(probe ? { probe } : {}),
+      ...(probe ? { probeInterpretation: interpretProbe(probe) } : {}),
       config: {
         APP_URL: configuredAppUrl ?? null,
         NEXTAUTH_URL: nextAuthUrl ?? null,
