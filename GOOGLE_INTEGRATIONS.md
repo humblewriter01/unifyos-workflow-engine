@@ -212,6 +212,11 @@ for the production sign-in URI, the Workspace-Connect URI and the localhost URI:
 | `scope_invalid` | URI fine, scope not approved | add the scope to the OAuth consent screen |
 | `unreachable` | the function could not reach Google | transient; retry |
 
+Google answers the authorize endpoint with a **302 either way**: to its
+account chooser when the request is valid, and to `/signin/oauth/error` with a
+base64 `authError` when it is not. The status code alone proves nothing; the
+endpoint decodes the `Location` to tell the two apart.
+
 The probe also runs a **control** — a deliberately invalid URI. If Google
 rejects the control but accepts the others, the verdicts are authoritative. If
 Google accepts the control too, `probeInterpretation` says `INCONCLUSIVE`:

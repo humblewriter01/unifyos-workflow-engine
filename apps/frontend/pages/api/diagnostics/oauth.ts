@@ -106,6 +106,33 @@ function buildAuthorizeParams(redirectUri: string, clientId: string): URLSearchP
   });
 }
 
+/**
+ * Reads Google's error redirect. `/signin/oauth/error?authError=<base64>` packs
+ * a protobuf-ish blob; the reason is readable in the decoded text.
+ */
+function decodeGoogleAuthError(location: string): {
+  mismatch: boolean;
+  invalidClient: boolean;
+  other: string | null;
+} {
+  if (!/\/signin\/oauth\/error|\/o\/oauth2\/v2\/error/i.test(location)) {
+    return { mismatch: false, invalidClient: false, other: null };
+  }
+  let decoded = '';
+  try {
+    const authError = new URL(location, AUTHORIZE_ENDPOINT).searchParams.get('authError');
+    if (authError) decoded = Buffer.from(authError, 'base64').toString('utf8');
+  } catch {
+    // fall through with an empty decode
+  }
+  const text = decoded.replace(/[^\x20-\x7e]+/g, ' ').trim();
+  return {
+    mismatch: /redirect_uri_mismatch/i.test(decoded),
+    invalidClient: /invalid_client|OAuth client was not found/i.test(decoded),
+    other: text || 'Google rejected the request',
+  };
+}
+
 async function probeRedirectUri(redirectUri: string, clientId: string): Promise<ProbeResult> {
   const params = buildAuthorizeParams(redirectUri, clientId);
 
@@ -120,14 +147,41 @@ async function probeRedirectUri(redirectUri: string, clientId: string): Promise<
       headers: { accept: 'text/html', 'user-agent': 'unifyos-oauth-diagnostics/1.0' },
     });
 
-    // A rejected redirect_uri is always an HTML 400. A 3xx means Google
-    // accepted it and moved on to the sign-in/consent step.
+    // Google answers the authorize endpoint with a 302 either way: to its
+    // account chooser when the request is valid, and to `/signin/oauth/error`
+    // when it is not. So the status code proves nothing — the Location does.
     if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location') ?? '';
+      const error = decodeGoogleAuthError(location);
+      if (error.mismatch) {
+        return {
+          redirectUri,
+          verdict: 'not_registered',
+          httpStatus: response.status,
+          message: 'Google redirected to its error page with redirect_uri_mismatch — this exact URI is not on the OAuth client.',
+        };
+      }
+      if (error.invalidClient) {
+        return {
+          redirectUri,
+          verdict: 'client_invalid',
+          httpStatus: response.status,
+          message: 'Google redirected to its error page: the OAuth client was not found.',
+        };
+      }
+      if (error.other) {
+        return {
+          redirectUri,
+          verdict: 'other_error',
+          httpStatus: response.status,
+          message: `Google redirected to its error page: ${error.other}`,
+        };
+      }
       return {
         redirectUri,
         verdict: 'registered',
         httpStatus: response.status,
-        message: `Google accepted this redirect_uri (HTTP ${response.status} to ${response.headers.get('location') ?? 'the next step'}).`,
+        message: `Google moved past redirect_uri validation to ${new URL(location, AUTHORIZE_ENDPOINT).pathname} (HTTP ${response.status}).`,
       };
     }
     if (response.status < 300) {
