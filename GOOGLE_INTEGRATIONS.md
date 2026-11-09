@@ -177,25 +177,46 @@ Notes:
 
 Google rejects the request **before** the app is involved, so nothing in the
 server log or the app's error page explains it: the URI in the authorize
-request is simply not byte-for-byte identical to a registered one.
+request is not byte-for-byte identical to a registered one.
 
-Print the exact strings this deployment sends:
+#### Step 1 — see what the deployment sends
 
 ```bash
 curl -s https://unifyos-workflow-engine.vercel.app/api/diagnostics/oauth | jq .
 ```
 
-The response contains:
-
 | Field | Meaning |
 | --- | --- |
 | `signIn.redirectUri` | the URI Google must accept for **Sign in with Google** |
+| `signIn.appRedirectUri` | the URI the **Connect Google Workspace** button sends |
 | `signIn.clientId` | first 20 chars of the client ID in use — confirm it is the client you edited |
 | `appConnections[].redirectUri` | the URI each **Connect** button sends |
 | `requiredRegistrations` | deduplicated list to paste into the console |
 | `config.originDrift` | `true` when users browse a host other than `APP_URL` / `NEXTAUTH_URL` |
 
-Usual causes, in order of likelihood:
+#### Step 2 — ask Google whether it accepts them
+
+```bash
+curl -s "https://unifyos-workflow-engine.vercel.app/api/diagnostics/oauth?probe=1" | jq .data.probe
+```
+
+The endpoint sends the authorize request Google would receive (public client ID
+and a placeholder `state`; no user data, no secrets) and reports what came back
+for the production sign-in URI, the Workspace-Connect URI and the localhost URI:
+
+| `verdict` | What it means | Fix |
+| --- | --- | --- |
+| `registered` | Google accepted it | nothing — this flow's URI list is fine |
+| `not_registered` | Google does not have this URI on **this** client | add the exact string from `requiredRegistrations` |
+| `client_invalid` | Google does not know `GOOGLE_CLIENT_ID` | wrong/deleted client, wrong Cloud project, or the client is not *Web application* |
+| `scope_invalid` | URI fine, scope not approved | add the scope to the OAuth consent screen |
+| `unreachable` | the function could not reach Google | transient; retry |
+
+Run it right after saving the console edit. `not_registered` → the edit has not
+propagated (or landed on another client). `client_invalid` → the URI list is not
+the problem at all, the credentials are.
+
+#### Usual causes, in order of likelihood
 
 1. **The OAuth client was rotated and the new one has no redirect URI.** A fresh
    *Web application* client starts with an empty list; add the production URI
